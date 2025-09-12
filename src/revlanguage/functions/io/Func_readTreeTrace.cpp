@@ -170,11 +170,13 @@ RevPtr<RevVariable> Func_readTreeTrace::execute( void )
     WorkspaceVector<TraceTree> *rv = NULL;
     if ( treetype == "clock" )
     {
+        std::cerr<<"nexus="<<nexus<<"\n";
         if(nexus) rv = readTreesNexus(vectorOfFileNames, treetype, unroot_nonclock, thin, offset);
         else rv = readTrees(vectorOfFileNames, sep, treetype, unroot_nonclock, thin, offset);
     }
     else if ( treetype == "non-clock" )
     {
+        std::cerr<<"nexus="<<nexus<<"\n";
         if(nexus) rv = readTreesNexus(vectorOfFileNames, treetype, unroot_nonclock, thin, offset);
         else rv = readTrees(vectorOfFileNames, sep, treetype, unroot_nonclock, thin, offset);
         
