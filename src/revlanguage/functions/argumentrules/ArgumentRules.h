@@ -52,9 +52,6 @@ namespace RevLanguage {
         void                                        push_back(ArgumentRule* rule);
         void                                        push_front(ArgumentRule* rule);
         size_t                                      size(void) const;
-        void                                        printValue(std::ostream& o) const;
-        std::string                                 show() const;
-
     private:
     
         std::vector<ArgumentRule*>                  rules;

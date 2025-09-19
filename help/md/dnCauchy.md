@@ -3,14 +3,15 @@ dnCauchy
 ## title
 Cauchy Distribution
 ## description
-The Cauchy distribution describes the distribution of the ratio of two independent normal variables with mean 0 and variance 1. 
+Cauchy distribution with location equal to ‘location’ and scale equal to ‘scale’.
 ## details
-The Cauchy distribution takes two parameters, location and scale. It is a symmetric distribution, but its tails are broad enough that it has no defined mean or variance. The probability density function is f(x) = 1/(pi * scale) * 1 / (1 + x - (location/scale)^2)
+The Cauchy distribution has density:
+
+f(x) = 1/(pi * scale) * 1/(1 + x-(location/scale)^2)
+
 ## authors
 Andrew Magee
 ## see_also
-dnNormal
-dnChisq
 ## example
 	# we simulate some obversations
 	x <- rCauchy(n=10,location=0,scale=1)

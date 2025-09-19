@@ -15,12 +15,15 @@ template <class valueType> class TypedDagNode;
     class DispersalExtinctionRateStructureFunction : public TypedFunction<RbVector<double> > {
         
     public:
-        DispersalExtinctionRateStructureFunction(const TypedDagNode<RbVector<RbVector<double> > >* dr, TypedDagNode<RbVector<double> >* er, TypedDagNode<std::int64_t>* rs);
+        DispersalExtinctionRateStructureFunction(const TypedDagNode<RbVector<RbVector<double> > >* dr, TypedDagNode<RbVector<double> >* er, TypedDagNode<long>* rs);
         virtual                                            ~DispersalExtinctionRateStructureFunction(void);                                                         //!< Virtual destructor
         
         // public member functions
         DispersalExtinctionRateStructureFunction*           clone(void) const;                                                                  //!< Create an independent clone
+        void                                                keep(const DagNode* affecter);
+        void                                                restore(const DagNode *restorer);
         void                                                reInitialized(void);                                                                //!< The arguments have been re-initialized
+        void                                                touch(const DagNode *toucher );
         void                                                update(void);
         
     protected:
@@ -33,7 +36,7 @@ template <class valueType> class TypedDagNode;
         // members
         const TypedDagNode<RbVector<RbVector<double> > >*   dispersalRates;
         const TypedDagNode<RbVector<double> >*              extinctionRates;
-        const TypedDagNode<std::int64_t>*                            maxRangeSize;
+        const TypedDagNode<long>*                            maxRangeSize;
         
         std::vector<std::vector<unsigned> >                 bits;
         std::map<std::vector<unsigned>, unsigned>           inverseBits;

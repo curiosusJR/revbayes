@@ -14,9 +14,9 @@ namespace RevBayesCore {
      * This struct represents a value/count pair that is sorted by count
      */
     template <class T>
-    struct Sample : public std::pair<T, std::int64_t>
+    struct Sample : public std::pair<T, long>
     {
-        Sample(T t, std::int64_t l) : std::pair<T, std::int64_t>(t,l) {}
+        Sample(T t, long l) : std::pair<T, long>(t,l) {}
         
         inline bool operator<(const Sample<T>& rhs) const
         {

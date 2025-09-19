@@ -17,9 +17,9 @@ RbException::RbException(ExceptionType type, const std::string& msg) :
 {
 }
 
-/** Copy constructor **/
+/** Copy constructor: this is used when we throw the exception, but should not be used otherwise **/
 RbException::RbException(const RbException& E)
-    :exception_type(E.exception_type), message(E.message.str())
+    :message(E.message.str())
 {
     // Copy formatting flags.
     message.flags(E.message.flags());

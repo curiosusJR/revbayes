@@ -5,11 +5,12 @@
 #include <string>
 #include <vector>
 
-#include <filesystem>
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
 
 namespace RevBayesCore {
 
-    using namespace std::filesystem;
+    using namespace boost::filesystem;
     
     std::istream&           safeGetline(std::istream& is, std::string& t); //!< Gets one line from a stream
     path                    expandUserDir(std::string path); //!< Get full path to user directory

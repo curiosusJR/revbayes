@@ -180,7 +180,7 @@ union YYSTYPE
     char*                                           c_string;
     std::string*                                    string;
     double                                          realValue;
-    std::int64_t                                    longIntValue;
+    long                                             longIntValue;
     bool                                            boolValue;
     RevLanguage::SyntaxElement*                     syntaxElement;
     RevLanguage::SyntaxVariable*                    syntaxVariable;

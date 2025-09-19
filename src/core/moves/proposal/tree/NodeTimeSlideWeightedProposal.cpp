@@ -3,7 +3,6 @@
 #include <iostream>
 #include <vector>
 
-#include "DebugMove.h"
 #include "DistributionBeta.h"
 #include "NodeTimeSlideWeightedProposal.h"
 #include "RandomNumberFactory.h"
@@ -11,7 +10,6 @@
 #include "DagNode.h"
 #include "Proposal.h"
 #include "RbOrderedSet.h"
-#include "RbSettings.h"  // for debugMCMC setting
 #include "StochasticNode.h"
 #include "TopologyNode.h"
 #include "Tree.h"
@@ -97,24 +95,19 @@ double NodeTimeSlideWeightedProposal::getProposalTuningParameter( void ) const
  */
 double NodeTimeSlideWeightedProposal::doProposal( void )
 {
-    int logMCMC = RbSettings::userSettings().getLogMCMC();
-    int debugMCMC = RbSettings::userSettings().getDebugMCMC();
     
-    // get random number generator
-    RandomNumberGenerator* rng = GLOBAL_RNG;
+    // Get random number generator
+    RandomNumberGenerator* rng     = GLOBAL_RNG;
     
     Tree& tau = variable->getValue();
     
-    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
-    TopologyNode* node = tau.pickRandomInternalNode(rng);
-    if (node == NULL)
-    {
-        if (logMCMC >=1 or debugMCMC >=1)
-        {
-            std::cerr << "mvNodeTimeSlide has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
-        }
-        return RbConstants::Double::neginf;
-    }
+    // pick a random node which is not the root, a tip, or the parent of a SA
+    TopologyNode* node;
+    do {
+        double u = rng->uniform01();
+        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
+        node = &tau.getNode(index);
+    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent() );
     
     TopologyNode& parent = node->getParent();
     

@@ -33,9 +33,7 @@ namespace RevBayesCore {
         bool                                                isConvergenceRule(void) const;                              //!< No, this is a threshold rule.
         void                                                runStarted(void);                                           //!< The run just started. Here we do not need to do anything.
         void                                                setNumberOfRuns(size_t n);                                  //!< Set how many runs/replicates there are.
-        double                                              getStatistic(size_t g);                                     //!< Compute the value of the rule's test statistic / criterion at generation g.
-        std::string                                         printAsStatement(size_t g, bool target_only);               //!< Print a statement about the current value of the rule's test statistic / criterion, or just the target value.
-        bool                                                stop(size_t g);                                             //!< Should we stop at generation g?
+        bool                                                stop(size_t g);                                             //!< Should we stop now?
         
     private:
         double                                              maxTime;
@@ -44,7 +42,7 @@ namespace RevBayesCore {
     };
     
     // Global functions using the class
-    std::ostream&                       operator<<(std::ostream& o, const MaxTimeStoppingRule& x);                      //!< Overloaded output operator
+    std::ostream&                       operator<<(std::ostream& o, const MaxTimeStoppingRule& x);                 //!< Overloaded output operator
     
 }
 

@@ -51,7 +51,6 @@ namespace RevLanguage {
      */
 
     class Workspace : public Environment {
-
     public:
         virtual ~Workspace(void);                                                                                       //!< Destrcutor
         
@@ -71,31 +70,22 @@ namespace RevLanguage {
         RevObject*                          makeNewDefaultObject(const std::string& type) const;                        //!< Make a clone of the template type object
         void                                updateVectorVariables(void);
         
-        static std::shared_ptr<Workspace>   globalWorkspacePtr(void) //!< Get global workspace
-        {
-            static std::shared_ptr<Workspace> globalSpacePtr(new Workspace("GlobalWorkspace"));
-            return globalSpacePtr;
-        }
         static Workspace&                   globalWorkspace(void) //!< Get global workspace
         {
-            return *globalWorkspacePtr();
-        }
-
-        static std::shared_ptr<Workspace>   userWorkspacePtr(void)  //!< Get user workspace
-        {
-            static std::shared_ptr<Workspace> userSpacePtr(new Workspace(globalWorkspacePtr(),"UserWorkspace"));
-            return userSpacePtr;
+            static Workspace globalSpace = Workspace("GlobalWorkspace");
+            return globalSpace;
         }
 
         static Workspace&                   userWorkspace(void) //!< Get user workspace
         {
-            return *userWorkspacePtr();
+            static Workspace userSpace = Workspace(&Workspace::globalWorkspace(),"UserWorkspace");
+            return userSpace;
         }
-
+        
 
     private:
                                             Workspace(const std::string &n);                                            //!< Workspace without parent
-                                            Workspace(const std::shared_ptr<Environment>& parentSpace, const std::string &n);                  //!< Workspace with parent
+                                            Workspace(Environment* parentSpace, const std::string &n);                  //!< Workspace with parent
                                             Workspace(const Workspace& w);                                              //!< Prevent copy
 
         Workspace&                          operator=(const Workspace& w);                                              //!< Prevent assignment

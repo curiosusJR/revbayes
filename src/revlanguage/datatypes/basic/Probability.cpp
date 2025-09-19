@@ -148,7 +148,7 @@ const TypeSpec& Probability::getTypeSpec( void ) const
 
 
 /** Is convertible to type? */
-double Probability::isConvertibleTo( const TypeSpec& type, bool convert_by_value ) const
+double Probability::isConvertibleTo( const TypeSpec& type, bool once ) const
 {
     
     if ( type == RealPos::getClassTypeSpec() )
@@ -157,7 +157,7 @@ double Probability::isConvertibleTo( const TypeSpec& type, bool convert_by_value
     }
     else
     {
-        double tmp = RealPos::isConvertibleTo(type, convert_by_value);
+        double tmp = RealPos::isConvertibleTo(type, once);
         return ( (tmp == -1.0) ? -1.0 : (tmp+0.1));
     }
 }

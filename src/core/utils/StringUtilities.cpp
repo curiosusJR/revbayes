@@ -33,21 +33,12 @@ using std::string;
 using std::vector;
 
 
-/** Convert the string s to a floating-point number */
-double StringUtilities::asDoubleNumber(const std::string& s)
-{
-    
-    return std::atof( s.c_str() );
-}
-
-
-/** Convert the string s to an integer */
+/** Convert the string s to a number */
 int StringUtilities::asIntegerNumber(const std::string& s)
 {
     
     return std::atoi( s.c_str() );
 }
-
 
 /**
  * Fill this string with spaces so that it has the required length.
@@ -382,7 +373,7 @@ bool StringUtilities::isNumber(const std::string& s)
 
 
 /**
- * Utility function for getting a one-line summary being max maxLen std::int64_t.
+ * Utility function for getting a one-line summary being max maxLen long.
  * We find the first non-empty line in the input. If it is longer than maxLen,
  * we truncate it at maxLen - 3 and add "..." at the end. If it is shorter, we
  * just return the complete line (without line break).
@@ -437,11 +428,8 @@ std::string StringUtilities::oneLiner( const std::string& input, size_t maxLen )
         
         if ( i < input.size() )
         {
-            if ( oneLiner.size() + 3 > maxLen)
+            if ( maxLen - oneLiner.size() < 3 )
             {
-                if (oneLiner.size() < maxLen)
-                    oneLiner += std::string(' ', maxLen - oneLiner.size());
-
                 oneLiner[ maxLen - 1 ] = '.';
                 oneLiner[ maxLen - 2 ] = '.';
                 oneLiner[ maxLen - 3 ] = '.';

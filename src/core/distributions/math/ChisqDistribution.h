@@ -18,7 +18,7 @@ template <class valueType> class TypedDagNode;
     class ChisqDistribution : public ContinuousDistribution {
         
         public:
-                                            ChisqDistribution(const TypedDagNode<std::int64_t> *df);
+                                            ChisqDistribution(const TypedDagNode<long> *df);
             virtual                        ~ChisqDistribution(void);                                            //!< Virtual destructor
             double                          cdf(void) const;                                                    //!< Cumulative density function
             ChisqDistribution*              clone(void) const;                                                  //!< Create an independent clone
@@ -32,7 +32,7 @@ template <class valueType> class TypedDagNode;
             void                            swapParameterInternal(const DagNode *oldP, const DagNode *newP);    //!< Swap a parameter
             
         private:
-            const TypedDagNode<std::int64_t>*       degrees;
+            const TypedDagNode<long>*       degrees;
     };
 }
 

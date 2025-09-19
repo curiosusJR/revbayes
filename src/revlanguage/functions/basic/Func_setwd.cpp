@@ -1,7 +1,6 @@
 #include <cstddef>
 #include <fstream>
 #include <vector>
-#include <filesystem>
 
 #include "Argument.h"
 #include "ArgumentRule.h"
@@ -17,9 +16,12 @@
 #include "RevVariable.h"
 #include "RlFunction.h"
 
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
+
 using namespace RevLanguage;
 
-namespace fs = std::filesystem;
+namespace fs = boost::filesystem;
 
 /** Default constructor */
 Func_setwd::Func_setwd( void ) : Procedure()

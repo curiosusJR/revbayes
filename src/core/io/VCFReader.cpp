@@ -104,7 +104,7 @@ HomologousDiscreteCharacterData<BinaryState>* VCFReader::readBinaryMatrix( void 
                 }
                 else
                 {
-                    throw RbException()<<"Unknown scored character '"<<allele_tokens[0]<<"'";
+                    throw RbException("Unknown scored character!");
                 }
                 
                 // second allele
@@ -122,7 +122,7 @@ HomologousDiscreteCharacterData<BinaryState>* VCFReader::readBinaryMatrix( void 
                 }
                 else
                 {
-                    throw RbException()<<"Unknown scored character '"<<allele_tokens[0]<<"'";
+                    throw RbException("Unknown scored character!");
                 }
             }
             
@@ -229,7 +229,7 @@ HomologousDiscreteCharacterData<DnaState>* VCFReader::readDNAMatrix( void )
                 }
                 else
                 {
-                    throw RbException()<<"Unknown scored character '"<<allele_tokens[0]<<"'";
+                    throw RbException("Unknown scored character!");
                 }
                 
                 // second allele
@@ -247,7 +247,7 @@ HomologousDiscreteCharacterData<DnaState>* VCFReader::readDNAMatrix( void )
                 }
                 else
                 {
-                    throw RbException()<<"Unknown scored character '"<<allele_tokens[0]<<"'";
+                    throw RbException("Unknown scored character!");
                 }
             }
             

@@ -27,7 +27,7 @@ namespace RevBayesCore {
         
     public:
 
-        PoMoKNRateMatrixFunction( const TypedDagNode< std::int64_t > *na, const TypedDagNode< std::int64_t > *ni, const TypedDagNode< RbVector<double> > *m, const TypedDagNode< RbVector<double> > *f ) ;
+        PoMoKNRateMatrixFunction( const TypedDagNode< long > *na, const TypedDagNode< long > *ni, const TypedDagNode< RbVector<double> > *m, const TypedDagNode< RbVector<double> > *f ) ;
 
         virtual                                            ~PoMoKNRateMatrixFunction(void);                                                    //!< Virtual destructor
         
@@ -41,12 +41,12 @@ namespace RevBayesCore {
         
     private:
         
-        std::int64_t                                                    computeNumStates( std::int64_t na, std::int64_t ni );
-        std::int64_t                                                    computeNumMutRates( std::int64_t na );
+        long                                                    computeNumStates( long na, long ni );
+        long                                                    computeNumMutRates( long na );
 
         // members
-        const TypedDagNode< std::int64_t >*                             N;
-        const TypedDagNode< std::int64_t >*                             K;
+        const TypedDagNode< long >*                             N;
+        const TypedDagNode< long >*                             K;
         const TypedDagNode< RbVector<double> >*                 mu;
         const TypedDagNode< RbVector<double> >*                 phi;
         

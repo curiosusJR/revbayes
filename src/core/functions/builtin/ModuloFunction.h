@@ -16,10 +16,10 @@ template <class valueType> class TypedDagNode;
      * TypedDagNodes
      *
      */
-    class ModuloFunction : public TypedFunction<std::int64_t> {
+    class ModuloFunction : public TypedFunction<long> {
         
     public:
-        ModuloFunction(const TypedDagNode<std::int64_t> * l, const TypedDagNode<std::int64_t> *r);
+        ModuloFunction(const TypedDagNode<long> * l, const TypedDagNode<long> *r);
         virtual                                            ~ModuloFunction(void);                                                       //!< Virtual destructor
         
         // public member functions
@@ -32,8 +32,8 @@ template <class valueType> class TypedDagNode;
     private:
         
         // members
-        const TypedDagNode<std::int64_t>*                            left;
-        const TypedDagNode<std::int64_t>*                            right;
+        const TypedDagNode<long>*                            left;
+        const TypedDagNode<long>*                            right;
         
     };
     

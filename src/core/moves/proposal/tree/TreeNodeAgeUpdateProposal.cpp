@@ -4,10 +4,8 @@
 #include <cmath>
 #include <set>
 
-#include "DebugMove.h"
 #include "RandomNumberFactory.h"
 #include "RandomNumberGenerator.h"
-#include "RbSettings.h"  // for debugMCMC setting
 #include "TreeUtilities.h"
 #include "Cloneable.h"
 #include "StochasticNode.h"
@@ -115,24 +113,19 @@ double TreeNodeAgeUpdateProposal::getProposalTuningParameter( void ) const
  */
 double TreeNodeAgeUpdateProposal::doProposal( void )
 {
-    int logMCMC = RbSettings::userSettings().getLogMCMC();
-    int debugMCMC = RbSettings::userSettings().getDebugMCMC();
-    
-    // get random number generator
-    RandomNumberGenerator* rng = GLOBAL_RNG;
+
+    // Get random number generator
+    RandomNumberGenerator* rng     = GLOBAL_RNG;
 
     Tree& tau = speciesTree->getValue();
 
-    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
-    TopologyNode* node = tau.pickRandomInternalNode(rng);
-    if (node == NULL)
-    {
-        if (logMCMC >=1 or debugMCMC >=1)
-        {
-            std::cerr << "mvSpeciesNodeTimeSlideUniform has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
-        }
-        return RbConstants::Double::neginf;
-    }
+    // pick a random node which is not the root, a tip, or the parent of a SA
+    TopologyNode* node;
+    do {
+        double u = rng->uniform01();
+        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
+        node = &tau.getNode(index);
+    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent() );
 
     TopologyNode& parent = node->getParent();
 

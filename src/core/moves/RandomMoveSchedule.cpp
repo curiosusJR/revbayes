@@ -42,7 +42,7 @@ double RandomMoveSchedule::getNumberMovesPerIteration( void ) const
 }
 
 
-Move& RandomMoveSchedule::nextMove( std::uint64_t gen )
+Move& RandomMoveSchedule::nextMove( unsigned long gen )
 {
     
     movesPerIteration = 0.0;

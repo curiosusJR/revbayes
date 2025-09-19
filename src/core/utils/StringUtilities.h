@@ -22,8 +22,7 @@
 namespace StringUtilities {
     
     
-    double                      asDoubleNumber(const std::string& s);                                               //!< Converts a string to a floating-point number
-    int                         asIntegerNumber(const std::string& s);                                              //!< Converts a string to an integer
+    int                         asIntegerNumber(const std::string& s);                                              //!< Checks if a string is an integer number
     void                        fillWithSpaces(std::string &s, int l, bool left);                                   //!< Fill up the string with spaces either left aligned or right aligned
     size_t                      findFirstOf(const std::string &s, char c);
     size_t                      findFirstOf(const std::string &a, const std::string &b);

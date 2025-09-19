@@ -18,20 +18,20 @@
 using namespace RevLanguage;
 
 /** Default constructor */
-IntegerPos::IntegerPos( void ) : Natural( 0 )
+IntegerPos::IntegerPos( void ) : Natural( 0L )
 {
 
 }
 
 
-IntegerPos::IntegerPos( RevBayesCore::TypedDagNode<std::int64_t> *v ) : Natural( v )
+IntegerPos::IntegerPos( RevBayesCore::TypedDagNode<long> *v ) : Natural( v )
 {
     
 }
 
 
 /** Construct from Natural */
-IntegerPos::IntegerPos( std::int64_t x ) : Natural( x )
+IntegerPos::IntegerPos( long x ) : Natural( x )
 {
 
     if ( x < 1 )
@@ -40,6 +40,7 @@ IntegerPos::IntegerPos( std::int64_t x ) : Natural( x )
     }
     
 }
+
 
 /**
  * Generic addition operator.
@@ -230,7 +231,7 @@ const TypeSpec& IntegerPos::getTypeSpec( void ) const
 
 
 /** Is convertible to type? */
-double IntegerPos::isConvertibleTo( const TypeSpec& type, bool convert_by_value ) const
+double IntegerPos::isConvertibleTo( const TypeSpec& type, bool once ) const
 {
 
     if ( type == RlBoolean::getClassTypeSpec() )
@@ -248,7 +249,7 @@ double IntegerPos::isConvertibleTo( const TypeSpec& type, bool convert_by_value 
         return 0.2;
     }
     
-    if ( convert_by_value == true && type == Probability::getClassTypeSpec() && dag_node->getValue() <= 1 )
+    if ( once == true && type == Probability::getClassTypeSpec() && dag_node->getValue() <= 1 )
     {
         return 0.1;
     }
@@ -263,7 +264,7 @@ double IntegerPos::isConvertibleTo( const TypeSpec& type, bool convert_by_value 
         return 0.7;
     }
     
-    return Integer::isConvertibleTo( type, convert_by_value );
+    return Integer::isConvertibleTo( type, once );
 }
 
 

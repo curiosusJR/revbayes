@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "DagNode.h"
-#include "DebugMove.h"
 #include "MetropolisHastingsMove.h"
 #include "Proposal.h"
 #include "RandomNumberFactory.h"
@@ -259,6 +258,47 @@ void MetropolisHastingsMove::performHillClimbingMove( double lHeat, double pHeat
 
 }
 
+std::map<const DagNode*, double> getNodePrs(const std::vector<DagNode*>& nodes, const RbOrderedSet<DagNode*>& affected_nodes)
+{
+    std::map<const DagNode*, double> Prs;
+    for(auto node: views::concat(nodes, affected_nodes))
+	Prs.insert({node, node->getLnProbability()});
+    return Prs;
+}
+
+constexpr double rel_err_threshhold = 1.0e-11;
+constexpr int err_precision = 11;
+
+void compareNodePrs(const Proposal* proposal, const std::map<const DagNode*, double>& pdfs1, const std::map<const DagNode*, double>& pdfs2, const std::string& msg)
+{
+    RbException E;
+    E<<std::setprecision(err_precision)<<"Executing "<<proposal->getLongProposalName()<<": "<<msg<<"!\n";
+    bool err = false;
+    for(auto& [node,pr1]: pdfs1)
+    {
+	auto pr2 = pdfs2.at(node);
+
+	// If they are both NaNs then they that is not a problem.
+	if (std::isnan(pr1) and std::isnan(pr2)) continue;
+
+	// Be a bit careful about computing a relative error.
+	double abs_err = std::abs(pr1 - pr2);
+	double scale = std::min(std::abs(pr1),std::abs(pr2));
+	if (scale < 1 or not RbMath::isAComputableNumber(scale))
+	    scale = 1;
+	double rel_err = abs_err/scale;
+
+	// Complain if rel_err is NaN.
+	if (not (rel_err < rel_err_threshhold))
+	{
+	    E<<"    "<<node->getName()<<": "<<pr1<<" != "<<pr2<<"    diff = "<<pr1-pr2<<"\n";
+	    err = true;
+	}
+    }
+
+    if (err) throw E;
+}
+
 void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, double pHeat )
 {
     // These are the nodes we are (directly) modifying.
@@ -266,23 +306,19 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
     // These are the nodes that are (indirectly) affected.
     const RbOrderedSet<DagNode*> &affected_nodes = getAffectedNodes();
 
-    // 0. Initial checks and debug logging.
     int logMCMC = RbSettings::userSettings().getLogMCMC();
     int debugMCMC = RbSettings::userSettings().getDebugMCMC();
 
     // Compute PDFs for nodes and affected nodes if we are going to use them.
-    NodePrMap initialPdfs;
+    std::map<const DagNode*, double> initialPdfs;
     if (logMCMC >= 3 or debugMCMC >= 1)
-    	initialPdfs = getNodePrs(nodes, affected_nodes);
+	initialPdfs = getNodePrs(nodes, affected_nodes);
 
     if (logMCMC >= 3)
     {
         std::cerr<<std::setprecision(11);
-        for(auto& node: views::concat(nodes,affected_nodes))
-        {
-            auto pr = initialPdfs.at(node);
+        for(auto& [node,pr]: initialPdfs)
             std::cerr<<"    BEFORE:   "<<node->getName()<<":  "<<pr<<"\n";
-        }
         std::cerr<<"\n";
     }
 
@@ -309,7 +345,7 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
             node->keep();
 
         // 5. Compare pdfs for each node
-        compareNodePrs(proposal->getLongProposalName(), untouched_before_proposal, touched_before_proposal, "PDFs not up-to-date before proposal");
+        compareNodePrs(proposal, untouched_before_proposal, touched_before_proposal, "PDFs not up-to-date before proposal");
     }
 
     // Propose a new value
@@ -343,6 +379,8 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
     // compute the probability of the current value for each node
     for (auto node: views::concat(touched_nodes, affected_nodes))
     {
+        if (fail_probability) break;
+
         if (not node->isStochastic()) continue;
 
         double ratio = 0;
@@ -366,7 +404,7 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
             if ( e.getExceptionType() != RbException::MATH_ERROR )
                 throw;
 
-            ratio = RbConstants::Double::nan;
+            ratio = RbConstants::Double::neginf;
         }
 
         if ( node->isClamped() )
@@ -379,12 +417,8 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
 
     if (logMCMC >= 3)
     {
-        auto proposedPrs = getNodePrs(nodes, affected_nodes);
-        for(auto& node: views::concat(nodes,affected_nodes))
-        {
-            auto pr = proposedPrs.at(node);
+        for(auto& [node,pr]: getNodePrs(nodes, affected_nodes))
             std::cerr<<"    PROPOSED: "<<node->getName()<<":  "<<pr<<"\n";
-        }
         std::cerr<<"\n";
     }
 
@@ -429,8 +463,8 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
     }
     else
     {
-        if ( ln_posterior_ratio < -1000 and logMCMC + debugMCMC >= 1)
-            std::cerr << "Warning: Accepted move '" << proposal->getProposalName() << "' with with posterior ratio of " << ln_posterior_ratio << " and Hastings ratio of " << ln_hastings_ratio << ".";
+        if ( ln_posterior_ratio < -1000 )
+            throw RbException() << "Accepted move '" << proposal->getProposalName() << "' with with posterior ratio of " << ln_posterior_ratio << " and Hastings ratio of " << ln_hastings_ratio << ".";
 
         num_accepted_total++;
         num_accepted_current_period++;
@@ -442,23 +476,20 @@ void MetropolisHastingsMove::performMcmcMove( double prHeat, double lHeat, doubl
         proposal->cleanProposal();
     }
 
-    NodePrMap finalPdfs;
+    std::map<const DagNode*, double> finalPdfs;
     if (logMCMC >=3 or (debugMCMC >= 1 and rejected))
 	finalPdfs = getNodePrs(nodes, affected_nodes);
 
     if (logMCMC >= 3)
     {
-        for(auto& node: views::concat(nodes,affected_nodes))
-        {
-            auto pr = finalPdfs.at(node);
+        for(auto& [node,pr]: finalPdfs)
             std::cerr<<"    FINAL:    "<<node->getName()<<":  "<<pr<<"\n";
-        }
         std::cerr<<"\n";
     }
 
     if (debugMCMC >=1 and rejected)
     {
-        compareNodePrs(proposal->getLongProposalName(), initialPdfs, finalPdfs, "PDFs have changed after rejection and restore");
+        compareNodePrs(proposal, initialPdfs, finalPdfs, "PDFs have changed after rejection and restore");
     }
 
     if (logMCMC >= 2)

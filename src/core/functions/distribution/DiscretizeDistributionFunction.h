@@ -24,7 +24,7 @@ template <class valueType> class TypedDagNode;
     class DiscretizeDistributionFunction : public TypedFunction< RbVector<double> > {
         
     public:
-        DiscretizeDistributionFunction(ContinuousDistribution *d, const TypedDagNode<std::int64_t> *nc);
+        DiscretizeDistributionFunction(ContinuousDistribution *d, const TypedDagNode<long> *nc);
         DiscretizeDistributionFunction(const DiscretizeDistributionFunction &pdf);
         virtual                            ~DiscretizeDistributionFunction();
         
@@ -40,7 +40,7 @@ template <class valueType> class TypedDagNode;
     private:
 
         ContinuousDistribution*             dist;
-        const TypedDagNode<std::int64_t>*           num_cats;
+        const TypedDagNode<long>*           num_cats;
     
     };
 }

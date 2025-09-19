@@ -4,8 +4,8 @@
 using namespace RevBayesCore;
 
 
-PoMoKNRateMatrixFunction::PoMoKNRateMatrixFunction(   const TypedDagNode< std::int64_t > *na, 
-                                                      const TypedDagNode< std::int64_t > *ni, 
+PoMoKNRateMatrixFunction::PoMoKNRateMatrixFunction(   const TypedDagNode< long > *na, 
+                                                      const TypedDagNode< long > *ni, 
                                                       const TypedDagNode< RbVector<double> > *m, 
                                                       const TypedDagNode< RbVector<double> > *f ) : 
 TypedFunction<RateGenerator>( new RateMatrix_PoMoKN( computeNumStates(na->getValue(), ni->getValue() ), na->getValue(), ni->getValue() , computeNumMutRates( na->getValue() ) ) ),
@@ -30,10 +30,10 @@ PoMoKNRateMatrixFunction::~PoMoKNRateMatrixFunction( void )
 }
 
 
-std::int64_t PoMoKNRateMatrixFunction::computeNumStates( std::int64_t na, std::int64_t ni )
+long PoMoKNRateMatrixFunction::computeNumStates( long na, long ni )
 {
 
-    std::int64_t numStates = na + (na*na-na)*(ni-1)*0.5;
+    long numStates = na + (na*na-na)*(ni-1)*0.5;
     
     return numStates;
 
@@ -41,10 +41,10 @@ std::int64_t PoMoKNRateMatrixFunction::computeNumStates( std::int64_t na, std::i
 
 
 
-std::int64_t PoMoKNRateMatrixFunction::computeNumMutRates( std::int64_t na )
+long PoMoKNRateMatrixFunction::computeNumMutRates( long na )
 {
 
-    std::int64_t numMutRates = na*na-na;
+    long numMutRates = na*na-na;
     
     return numMutRates;
 
@@ -61,8 +61,8 @@ PoMoKNRateMatrixFunction* PoMoKNRateMatrixFunction::clone( void ) const
 void PoMoKNRateMatrixFunction::update( void )
 {
     // get the information from the arguments for reading the file
-    std::int64_t na = K->getValue();
-    std::int64_t ni = N->getValue();
+    long na = K->getValue();
+    long ni = N->getValue();
     const std::vector<double>& m = mu->getValue();
     const std::vector<double>& f = phi->getValue();
 
@@ -82,12 +82,12 @@ void PoMoKNRateMatrixFunction::swapParameterInternal(const DagNode *oldP, const 
     
     if (oldP == K)
     {
-        K = static_cast<const TypedDagNode< std::int64_t >* >( newP );
+        K = static_cast<const TypedDagNode< long >* >( newP );
     }
     
     if (oldP == N)
     {
-        N =  static_cast<const TypedDagNode< std::int64_t >* >( newP );
+        N =  static_cast<const TypedDagNode< long >* >( newP );
     }
 
     if (oldP == mu)

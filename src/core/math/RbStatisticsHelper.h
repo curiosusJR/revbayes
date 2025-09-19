@@ -17,10 +17,7 @@
 #ifndef RbStatisticsHelper_H
 #define RbStatisticsHelper_H
 
-#include <cstdint>
-#include <optional>
 #include <vector>
-
 #include "RandomNumberGenerator.h"
 #include "RbException.h"
 
@@ -32,11 +29,6 @@ namespace RevBayesCore {
         
             double                      dppConcParamFromNumTables(double tables, double num);
             double                      dppExpectNumTableFromConcParam(double conp, double num);
-            double                      getACT(const std::vector<double> values, std::optional<std::int64_t> begin = std::nullopt, std::optional<std::int64_t> end = std::nullopt); //!< Calculate the auto-correlation time for a time series represented as an arbitrary vector of numeric values
-            double                      getESS(const std::vector<double> values, std::optional<std::int64_t> begin = std::nullopt, std::optional<std::int64_t> end = std::nullopt); //!< Calculate the effective sample size for a time series represented as an arbitrary vector of numeric values
-            double                      getRangeMean(const std::vector<double> values, std::optional<std::int64_t> begin = std::nullopt, std::optional<std::int64_t> end = std::nullopt);
-            double                      getSEM(const std::vector<double> values, std::optional<std::int64_t> begin = std::nullopt, std::optional<std::int64_t> end = std::nullopt); //!< Calculate the standard error of the mean of an arbitrary vector of numeric values
-            double                      getVarStat(const std::vector<double> values, std::optional<std::int64_t> begin = std::nullopt, std::optional<std::int64_t> end = std::nullopt);
             double                      pointChi2(double prob, double v);
             int                         poissonInver(double lambda, RandomNumberGenerator& rng);
             int                         poissonLow(double lambda, RandomNumberGenerator& rng);

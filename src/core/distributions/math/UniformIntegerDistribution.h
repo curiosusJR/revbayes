@@ -19,10 +19,10 @@ template <class valueType> class TypedDagNode;
      *@param max The maximum value of the distribution
      *
      */
-    class UniformIntegerDistribution : public TypedDistribution<std::int64_t> {
+    class UniformIntegerDistribution : public TypedDistribution<long> {
         
     public:
-        UniformIntegerDistribution(const TypedDagNode<std::int64_t> *min, const TypedDagNode<std::int64_t> *max);
+        UniformIntegerDistribution(const TypedDagNode<long> *min, const TypedDagNode<long> *max);
         virtual                                            ~UniformIntegerDistribution(void);                                                  //!< Virtual destructor
         
         // public member functions
@@ -37,8 +37,8 @@ template <class valueType> class TypedDagNode;
     private:
         
         // members
-        const TypedDagNode<std::int64_t>*                            min;
-        const TypedDagNode<std::int64_t>*                            max;
+        const TypedDagNode<long>*                            min;
+        const TypedDagNode<long>*                            max;
         
     };
     

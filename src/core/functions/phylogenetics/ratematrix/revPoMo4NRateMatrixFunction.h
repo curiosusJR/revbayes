@@ -27,7 +27,7 @@ namespace RevBayesCore {
         
     public:
 
-        revPoMo4NRateMatrixFunction(const TypedDagNode< std::int64_t > *ni, 
+        revPoMo4NRateMatrixFunction(const TypedDagNode< long > *ni, 
                                     const TypedDagNode< Simplex > *bf,
                                     const TypedDagNode< RbVector<double> > *ex, 
                                     const TypedDagNode< RbVector<double> > *f ) ;
@@ -44,10 +44,10 @@ namespace RevBayesCore {
         
     private:
         
-        std::int64_t                                                    computeNumStates( std::int64_t ni );
+        long                                                    computeNumStates( long ni );
 
         // members
-        const TypedDagNode< std::int64_t >*                             N;
+        const TypedDagNode< long >*                             N;
         const TypedDagNode< Simplex >*                          pi;
         const TypedDagNode< RbVector<double> >*                 rho;
         const TypedDagNode< RbVector<double> >*                 phi;

@@ -15,7 +15,6 @@
  */
 
 #include <cstddef>
-#include <cstdint>
 #include <cmath>
 #include <vector>
 #include <algorithm>
@@ -250,7 +249,7 @@ double RbMath::gamma(double x)
     
     /* If the argument is exactly zero or a negative integer
      * then return NaN. */
-    if (x == 0 || (x < 0 && x == (std::int64_t)x)) 
+    if (x == 0 || (x < 0 && x == (long)x)) 
     {
         std::ostringstream s;
         s << "Cannot compute gamma function for x = " << x;

@@ -83,6 +83,7 @@ namespace RevBayesCore {
         const TypedDagNode<RateGeneratorSequence>*                  q_map_sequence;
         
         // dimensions
+        //<<<<<<< HEAD
         size_t                                                      numCharacters;
         size_t                                                      numStates;
         

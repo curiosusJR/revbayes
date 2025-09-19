@@ -28,15 +28,13 @@ namespace RevBayesCore {
         
         // public methods
         GewekeStoppingRule*                                 clone(void) const;                                          //!< Clone function. This is similar to the copy constructor but useful in inheritance.
-        double                                              getStatistic(size_t g);                                     //!< Compute the value of the rule's test statistic / criterion at generation g.
-        std::string                                         printAsStatement(size_t g, bool target_only);               //!< Print a statement about the current value of the rule's test statistic / criterion, or just the target value.
-        bool                                                stop(size_t g);                                             //!< Should we stop at generation g?
+        bool                                                stop(size_t g);                                             //!< Should we stop now?
         
     private:
         
-        double                                              alpha;                                                      //!< Significance level
-        double                                              frac1;                                                      //!< First window / chain fraction
-        double                                              frac2;                                                      //!< Second window / chain fraction
+        double                                              alpha;                                                     //!< The minimum ESS threshold
+        double                                              frac1;                                                     //!< The minimum ESS threshold
+        double                                              frac2;                                                     //!< The minimum ESS threshold
         
     };
     

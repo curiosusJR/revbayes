@@ -4,7 +4,6 @@
 #include <ostream>
 #include <vector>
 #include <cstddef>
-#include <cstdint>
 #include <set>
 
 #include "Proposal.h"
@@ -27,7 +26,7 @@ template <class variableType> class StochasticNode;
     class VectorBinarySwitchProposal : public Proposal {
         
     public:
-        VectorBinarySwitchProposal( std::vector< StochasticNode<std::int64_t>* > n, const std::vector<std::int64_t> &i, double sp);                                 //!< Constructor
+        VectorBinarySwitchProposal( std::vector< StochasticNode<long>* > n, const std::vector<long> &i, double sp);                                 //!< Constructor
         
         void                                        cleanProposal(void);                                                                //!< Clean up proposal
         VectorBinarySwitchProposal*                 clone(void) const;                                                                  //!< Clone object
@@ -48,8 +47,8 @@ template <class variableType> class StochasticNode;
         
     private:
         // parameters
-        std::vector<StochasticNode<std::int64_t>* >         variables;
-        std::vector<std::int64_t>                           indices;
+        std::vector<StochasticNode<long>* >         variables;
+        std::vector<long>                           indices;
         size_t                                      length;
         double                                      switch_probability;
         std::set<size_t>                            update_set;

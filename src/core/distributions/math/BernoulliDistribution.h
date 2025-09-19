@@ -18,7 +18,7 @@ template <class valueType> class TypedDagNode;
      * Instances of this class can be associated to stochastic variables.
      *
      */
-    class BernoulliDistribution : public TypedDistribution<std::int64_t> {
+    class BernoulliDistribution : public TypedDistribution<long> {
         
     public:
         BernoulliDistribution(const TypedDagNode<double> *p);

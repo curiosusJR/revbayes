@@ -59,8 +59,7 @@ mymcmc = mcmc(mymodel, monitors, moves)
 validation = validationAnalysis( mymcmc, NUM_VALIDATION_REPLICATES, directory="output_Binomial" )
 validation.burnin(generations=0.1*NUM_MCMC_ITERATIONS,tuningInterval=100)
 validation.run(generations=NUM_MCMC_ITERATIONS)
-validation.summarize(coverageProbability=0.9)
-validation.summarize(coverageProbability=0.5)
+validation.summarize()
 
 
 # you may want to quit RevBayes now

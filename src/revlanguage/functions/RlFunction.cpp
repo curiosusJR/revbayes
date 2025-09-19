@@ -133,7 +133,7 @@ std::string Function::callSignature(void) const
  *       Finally, the ellipsis arguments no longer have to be last among the rules, but they
  *       are still the last arguments after processing.
  */
-bool Function::checkArguments( const std::vector<Argument>& passed_args, std::vector<double>* match_score, std::vector<bool>& arg_mapped)
+bool Function::checkArguments( const std::vector<Argument>& passed_args, std::vector<double>* match_score, std::vector<bool>& arg_mapped, bool once)
 {
     
     /*********************  0. Initialization  **********************/
@@ -185,7 +185,7 @@ bool Function::checkArguments( const std::vector<Argument>& passed_args, std::ve
                     }
                     
                     Argument &arg = const_cast<Argument&>(passed_args[i]);
-                    double penalty = the_rules[j].isArgumentValid( arg );
+                    double penalty = the_rules[j].isArgumentValid( arg, once );
                     if ( penalty != -1 )
                     {
                         taken[i]          = true;
@@ -255,7 +255,7 @@ bool Function::checkArguments( const std::vector<Argument>& passed_args, std::ve
         {
             
             Argument &arg = const_cast<Argument&>(passed_args[i]);
-            double penalty = the_rules[match_rule].isArgumentValid(arg );
+            double penalty = the_rules[match_rule].isArgumentValid(arg, once );
             if ( penalty != -1 )
             {
                 taken[i]            = true;
@@ -299,7 +299,7 @@ bool Function::checkArguments( const std::vector<Argument>& passed_args, std::ve
             {
                 
                 Argument &arg = const_cast<Argument&>(passed_args[i]);
-                double penalty = the_rules[j].isArgumentValid( arg );
+                double penalty = the_rules[j].isArgumentValid( arg, once );
                 if ( penalty != -1 )
                 {
                     taken[i]          = true;
@@ -440,7 +440,7 @@ const TypeSpec& Function::getClassTypeSpec(void)
 
 
 /** Get execution environment of function */
-std::shared_ptr<Environment> Function::getEnvironment(void) const
+Environment* Function::getEnvironment(void) const
 {
     
     return env;
@@ -703,7 +703,7 @@ void Function::printValue(std::ostream& o, bool user) const
  * @todo Fredrik: Static and dynamic type conversion added, but partly hack-ish, so the implementation
  *       needs to be revised
  */
-void Function::processArguments( const std::vector<Argument>& passed_args )
+void Function::processArguments( const std::vector<Argument>& passed_args, bool once )
 {
 
     /*********************  0. Initialization  **********************/
@@ -758,7 +758,7 @@ void Function::processArguments( const std::vector<Argument>& passed_args )
                         throw RbException() << "Duplicate argument labels '" << passed_args[i].getLabel() ; 
                     }
 
-                    p_args[i]               = the_rules[j].fitArgument( p_args[i] );
+                    p_args[i]               = the_rules[j].fitArgument( p_args[i], once );
                     taken[i]                = true;
                     filled[j]               = true;
                     passed_arg_index[j]     = static_cast<int>( i );
@@ -823,7 +823,7 @@ void Function::processArguments( const std::vector<Argument>& passed_args )
         if ( num_matches == 1)
         {
             p_args[i].setLabel(label);
-            p_args[i]                       = the_rules[match_rule].fitArgument( p_args[i] );
+            p_args[i]                       = the_rules[match_rule].fitArgument( p_args[i], once );
             taken[i]                        = true;
             filled[match_rule]              = true;
             passed_arg_index[match_rule]    = static_cast<int>( i );
@@ -853,11 +853,11 @@ void Function::processArguments( const std::vector<Argument>& passed_args )
             {
                 
                 Argument &arg = const_cast<Argument&>(passed_args[i]);
-                double penalty = the_rules[j].isArgumentValid( arg );
+                double penalty = the_rules[j].isArgumentValid( arg, once );
                 if ( penalty != -1 )
                 {
                     p_args[i].setLabel( the_rules[j].getArgumentAliases().front() );
-                    p_args[i]           = the_rules[j].fitArgument( p_args[i] );
+                    p_args[i]           = the_rules[j].fitArgument( p_args[i], once );
                     taken[i]            = true;
                     if ( the_rules[j].isEllipsis() == false )
                     {
@@ -928,7 +928,7 @@ void Function::processArguments( const std::vector<Argument>& passed_args )
 }
 
 
-void Function::setExecutionEnviroment(const std::shared_ptr<Environment>& e)
+void Function::setExecutionEnviroment(Environment *e)
 {
     
     env = e;

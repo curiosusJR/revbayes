@@ -195,11 +195,8 @@ namespace RevBayesCore
 
         void update(void)
         {
-            auto new_value = compute_value();
-
-            // If compute_value() throws an exception, then we won't get here.
             delete this->value;
-            this->value = new_value;
+            this->value = compute_value();
         }
 
     protected:

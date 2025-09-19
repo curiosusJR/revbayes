@@ -16,7 +16,7 @@ template <class valueType> class TypedDagNode;
      * Instances of this class can be associated to stochastic variables.
      *
      */
-    class PoissonDistribution : public TypedDistribution<std::int64_t> {
+    class PoissonDistribution : public TypedDistribution<long> {
         
     public:
         PoissonDistribution(const TypedDagNode<double> *l);

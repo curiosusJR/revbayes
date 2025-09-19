@@ -20,21 +20,18 @@
 
 #include <string>
 #include <vector>
-#include <optional>
 
 class RevLanguageMain {
     
-public:
+    public:
     
-    RevLanguageMain(bool e, bool c, bool q);
+        RevLanguageMain(bool batch = false);
     
-    void startRevLanguageEnvironment(const std::vector<std::string> &expressions, const std::optional<std::string>& filename, const std::vector<std::string> &args);
+        void startRevLanguageEnvironment(const std::vector<std::string> &args, const std::vector<std::string> &source_files);
 
-private:
+    private:
     
-    bool echo;                  // print commands to the screen
-    bool continue_on_error;     // continue after an error
-    bool quiet;                 // suppress header
+        bool batch_mode;
 };
 
 #endif

@@ -20,7 +20,7 @@ template <class valueType> class RbVector;
         SingleRandomMoveSchedule*                       clone(void) const;
         double                                          getNumberMovesPerIteration(void) const;
         void                                            setNumberMovesPerIteration(double);
-        Move&                                           nextMove(std::uint64_t g);
+        Move&                                           nextMove(unsigned long g);
         
     private:
         

@@ -49,7 +49,7 @@ Real::Real( RevBayesCore::TypedDagNode<double> *v ) : ModelObject<double>( v )
 
 
 /* Construct from int */
-Real::Real(std::int64_t v) : ModelObject<double>( new double(v) )
+Real::Real(long v) : ModelObject<double>( new double(v) )
 {
 
 }
@@ -272,7 +272,7 @@ void Real::increment( void )
 
 
 /** Is convertible to type? */
-double Real::isConvertibleTo(const TypeSpec& type, bool convert_by_value) const
+double Real::isConvertibleTo(const TypeSpec& type, bool once) const
 {
 
     if ( type == RlBoolean::getClassTypeSpec() )
@@ -280,27 +280,27 @@ double Real::isConvertibleTo(const TypeSpec& type, bool convert_by_value) const
         return 0.6;
     }
     
-    if ( convert_by_value && type == RealPos::getClassTypeSpec() && dag_node->getValue() > 0.0 )
+    if ( once && type == RealPos::getClassTypeSpec() && dag_node->getValue() > 0.0 )
     {
         return 0.4;
     }
     
-    if ( convert_by_value && type == Probability::getClassTypeSpec() && dag_node->getValue() >= 0.0 && dag_node->getValue() <= 1.0 )
+    if ( once && type == Probability::getClassTypeSpec() && dag_node->getValue() >= 0.0 && dag_node->getValue() <= 1.0 )
     {
         return 0.1;
     }
     
-    if ( convert_by_value && type == Integer::getClassTypeSpec() && dag_node->getValue() == int(dag_node->getValue()) )
+    if ( once && type == Integer::getClassTypeSpec() && dag_node->getValue() == int(dag_node->getValue()) )
     {
         return 0.3;
     }
     
-    if ( convert_by_value && type == IntegerPos::getClassTypeSpec() && dag_node->getValue() >= 1.0 && dag_node->getValue() == int(dag_node->getValue()) )
+    if ( once && type == IntegerPos::getClassTypeSpec() && dag_node->getValue() >= 1.0 && dag_node->getValue() == int(dag_node->getValue()) )
     {
         return 0.7;
     }
 
-    if ( convert_by_value && type == Natural::getClassTypeSpec() && dag_node->getValue() >= 0.0 && dag_node->getValue() == int(dag_node->getValue()) )
+    if ( once && type == Natural::getClassTypeSpec() && dag_node->getValue() >= 0.0 && dag_node->getValue() == int(dag_node->getValue()) )
     {
         return 0.2;
     }
@@ -310,7 +310,7 @@ double Real::isConvertibleTo(const TypeSpec& type, bool convert_by_value) const
         return 0.5;
     }
     
-    return RevObject::isConvertibleTo(type, convert_by_value);
+    return RevObject::isConvertibleTo(type, once);
 }
 
 

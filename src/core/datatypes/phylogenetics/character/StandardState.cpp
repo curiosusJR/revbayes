@@ -156,9 +156,3 @@ void StandardState::setStateByIndex(size_t index)
     state.set( index );
 }
 
-
-void StandardState::setStateLabels(const std::string& l)
-{
-    labels = l;
-}
-

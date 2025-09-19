@@ -13,7 +13,6 @@
 #include "AbstractBirthDeathProcess.h"
 #include "AbstractRootedTreeDistribution.h"
 #include "RbBitSet.h"
-#include "RbSettings.h"
 #include "Tree.h"
 #include "TypedDagNode.h"
 
@@ -108,7 +107,7 @@ double BirthDeathProcess::computeLnProbabilityTimes( void ) const
         double p_0_t = 1.0 - pSurvival(last_event,present_time,1.0) * exp( rateIntegral(last_event,present_time) );
         double F_t = p_0_t / p_0_T;
         
-        if ( F_t > (1.0+RbSettings::userSettings().getTolerance()) || F_t < -RbSettings::userSettings().getTolerance() )
+        if ( F_t > 1.0 || F_t < 0.0 )
         {
             throw RbException("Problem in computing the probability of missing species in BDP.");
         }
@@ -131,7 +130,7 @@ double BirthDeathProcess::computeLnProbabilityTimes( void ) const
         double p_0_t = 1.0 - pSurvival(last_event_time,present_time,1.0) * exp( rateIntegral(last_event_time,present_time) );
         double log_F_t = log(p_0_t) - log(p_0_T);
 
-        if ( log_F_t > RbSettings::userSettings().getTolerance() )
+        if ( log_F_t > 0.0 )
         {
             throw RbException("Problem in computing the probability of missing species in BDP.");
         }

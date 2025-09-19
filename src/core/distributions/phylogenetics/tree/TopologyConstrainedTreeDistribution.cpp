@@ -49,7 +49,7 @@ using namespace RevBayesCore;
 TopologyConstrainedTreeDistribution::TopologyConstrainedTreeDistribution(TypedDistribution<Tree>* base_dist,
                                                                           const std::vector<Clade> &c,
                                                                           Tree *t,
-                                                                          std::int64_t age_check_precision) : TypedDistribution<Tree>( NULL ),
+                                                                          long age_check_precision) : TypedDistribution<Tree>( NULL ),
 //    active_backbone_clades( base_dist->getValue().getNumberOfInteriorNodes(), RbBitSet() ),
     active_clades( base_dist->getValue().getNumberOfInteriorNodes(), RbBitSet() ),
     backbone_topology(NULL),
@@ -610,12 +610,12 @@ void TopologyConstrainedTreeDistribution::redrawValue( SimulationCondition c )
         value->getTreeChangeEventHandler().removeListener( this );
     }
     new_value->getTreeChangeEventHandler().addListener( this );
-
+    
     // if we don't own the tree, then we just replace the current pointer with the pointer
     // to the new value of the base distribution
     value = new_value;
     base_distribution->setValue( value );
-
+    
     // recompute the active clades
     dirty_nodes = std::vector<bool>( value->getNumberOfNodes(), true );
     active_clades = std::vector<RbBitSet>(value->getNumberOfInteriorNodes(), RbBitSet());
@@ -624,7 +624,6 @@ void TopologyConstrainedTreeDistribution::redrawValue( SimulationCondition c )
     
     stored_clades          = active_clades;
     stored_backbone_clades = active_backbone_clades;
-
 }
 
 void TopologyConstrainedTreeDistribution::redrawValue( void )
@@ -1260,7 +1259,6 @@ void TopologyConstrainedTreeDistribution::setValue(Tree *v, bool f )
     
     stored_clades          = active_clades;
     stored_backbone_clades = active_backbone_clades;
-
 }
 
 
@@ -1288,6 +1286,7 @@ void TopologyConstrainedTreeDistribution::swapParameterInternal( const DagNode *
     }
     
 }
+
 
 /**
  * Touch the current value and reset some internal flags.

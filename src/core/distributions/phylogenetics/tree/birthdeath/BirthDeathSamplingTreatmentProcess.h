@@ -54,7 +54,7 @@ namespace RevBayesCore {
                                                     const std::vector<Taxon> &tn,
                                                     bool uo,
                                                     Tree *t,
-                                                    std::int64_t age_check_precision);  //!< Constructor
+                                                    long age_check_precision);  //!< Constructor
 
         // public member functions
         BirthDeathSamplingTreatmentProcess*             clone(void) const override;                                             //!< Create an independent clone
@@ -164,7 +164,7 @@ namespace RevBayesCore {
         std::string trt = "(serial) treatment";
         std::string etrt = "(event) treatment";
 
-        std::int64_t age_check_precision;
+        long age_check_precision;
         std::vector<Taxon> taxa;
     };
 }

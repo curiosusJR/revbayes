@@ -12,63 +12,51 @@
 #include "RlUserInterface.h"
 #include "RbVersion.h"
 #include "StringUtilities.h"
-#include "RevClient.h"        // for RevClient::shutdown()
-#include "RbSettings.h"
 
 #ifdef RB_MPI
 #include <mpi.h>
 #endif
 
-RevLanguageMain::RevLanguageMain(bool c, bool e, bool q)
-    : continue_on_error(c), echo(e), quiet(q)
+RevLanguageMain::RevLanguageMain(bool b) : batch_mode(b)
 {
 
 }
 
 
-void RevLanguageMain::startRevLanguageEnvironment(const std::vector<std::string> &expressions, const std::optional<std::string>& filename, const std::vector<std::string> &args)
+void RevLanguageMain::startRevLanguageEnvironment(const std::vector<std::string> &args, const std::vector<std::string> &source_files)
 {
-    auto& settings = RbSettings::userSettings();
-
-    int rank = 0;
+    
+    int pid = 0;
 #ifdef RB_MPI
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 #endif
-
-    // 1. Load the modules
+    
+    // load the modules
     try
     {
-        RevLanguage::ModuleSystem::getModuleSystem().loadModules( settings.getModuleDir() );
+        RevLanguage::ModuleSystem::getModuleSystem().loadModules( RbSettings::userSettings().getModuleDir() );
     }    
     catch (RbException &e)
     {
-        if (rank == 0) std::cout << e.getMessage() << std::endl;
+        std::cout << e.getMessage() << std::endl;
     }
 
 
-    // 2. Maybe show a header
-    bool script_or_expr = filename or not expressions.empty();
-    if (not script_or_expr and not quiet)
-    {
-        // Print a nifty message
-        RbVersion version = RbVersion();
-        RevLanguage::UserInterface::userInterface().output(version.getHeader(), false);
-        RevLanguage::UserInterface::userInterface().output("", false);
-    }
-
-    // 3. Initialize the global workspace
+    // Print a nifty message
+    RbVersion version = RbVersion();
+    RevLanguage::UserInterface::userInterface().output(version.getHeader(), false);
+    RevLanguage::UserInterface::userInterface().output("", false);
+    
     RevLanguage::Workspace::globalWorkspace().initializeGlobalWorkspace();
 
     // process the command line arguments as source file names    
     std::string line;
     std::string command_line;
-
-
-    // 4. Set the args vector.
+    int result = 0;
 
     // Ensure that args exists and has size 0.
     command_line = "args = [\"\"]; args.erase(\"\")";
-    RevLanguage::Parser::getParser().processCommand(command_line, RevLanguage::Workspace::userWorkspacePtr());
+    RevLanguage::Parser::getParser().processCommand(command_line, &RevLanguage::Workspace::userWorkspace());
 
     for (unsigned int i =0 ; i < args.size(); ++i)
     {
@@ -80,67 +68,67 @@ void RevLanguageMain::startRevLanguageEnvironment(const std::vector<std::string>
         {
             command_line = "args[" + StringUtilities::to_string(i+1) + "] = \"" + args[i] + "\"";
         }
-        int result = RevLanguage::Parser::getParser().processCommand(command_line, RevLanguage::Workspace::userWorkspacePtr());
-
-        // We just hope for better input next time
-        if ( result == 2 and not continue_on_error )
-        {
-            RevClient::shutdown();
-                
-            exit(1);
-        }
-    }
-
-    // 5. Evaluate any expressions given with -e expr
-    for (auto expression: expressions)
-    {
-        // Should we be using RBOUT here?  It looks weird with the 2 spaces of padding.
-        if (echo and rank == 0)
-            std::cerr<<"> "<<expression<<"\n";
-
-        int result = RevLanguage::Parser::getParser().processCommand(expression, RevLanguage::Workspace::userWorkspacePtr());
+        result = RevLanguage::Parser::getParser().processCommand(command_line, &RevLanguage::Workspace::userWorkspace());
         
         // We just hope for better input next time
-        if (result == 2 and not continue_on_error)
+        if (result == 2)
         {
-            RevClient::shutdown();
+            result = 0;
+            
+            if( batch_mode == true )
+            {
+                RevLanguage::Workspace::userWorkspace().clear();
+                RevLanguage::Workspace::globalWorkspace().clear();
                 
-            exit(1);
+#ifdef RB_MPI
+                MPI_Finalize();
+#endif
+                
+                exit(1);
+            }
         }
     }
+    
+    for (unsigned int i =0 ; i < source_files.size(); ++i)
+    {
+        line = "source(\"" + source_files[i] + "\")";
+        
+        // let only the master process print to the screen
+        if ( pid == 0 )
+        {
+            std::cout << "> " << line << std::endl;
+        }
+        
+        // Process the command line
+        if (result == 1)
+        {
+            command_line += line;
+        }
+        else
+        {
+            command_line = line;
+        }
+        
+        result = RevLanguage::Parser::getParser().processCommand(command_line, &RevLanguage::Workspace::userWorkspace());
 
-    // 6. Evaluate a filename if given.
-    try
-    {
-        if (filename)
-            RevClient::execute_file(*filename, echo, continue_on_error);
-    }
-    catch (const RbException& e)
-    {
-        // Try to give the same error messages as in RevLanguage::Parser::Execute( ) in revlanguage/parser/Parser.cpp
-        if (rank == 0)
+        // We just hope for better input next time
+        if (result == 2)
         {
-            std::ostringstream msg;
-            e.print(msg);
-            RBOUT(msg.str());
+            result = 0;
+
+            if( batch_mode == true )
+            {
+                RevLanguage::Workspace::userWorkspace().clear();
+                RevLanguage::Workspace::globalWorkspace().clear();
+                
+#ifdef RB_MPI
+                MPI_Finalize();
+#endif
+
+                exit(1);
+            }
         }
-        std::exit(1);
-    }
-    catch (const std::exception& e)
-    {
-        if (rank == 0)
-        {
-            RBOUT(e.what());
-        }
-        std::exit(1);
-    }
-    catch (...)
-    {
-        if (rank == 0)
-        {
-            RBOUT("Error:\tunknown exception!");
-        }
-        std::exit(1);
+        
     }
     
 }

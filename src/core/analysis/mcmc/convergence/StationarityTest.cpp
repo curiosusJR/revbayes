@@ -17,11 +17,8 @@ StationarityTest::StationarityTest(size_t b, double f) : ConvergenceDiagnosticCo
 
 }
 
-double StationarityTest::getStatistic(const TraceNumeric& trace)
+bool StationarityTest::assessConvergence(const TraceNumeric& trace)
 {
-    // record the results
-    size_t nSignif = 0;
-    
     // calculate the block size
     size_t blockSize = trace.size(true) / nBlocks;
     
@@ -47,19 +44,16 @@ double StationarityTest::getStatistic(const TraceNumeric& trace)
         // check if the trace mean is outside this confidence interval
         if (blockMeans[i]-quantile > traceMean || blockMeans[i]+quantile < traceMean)
         {
-            // the mean of the whole trace falls out of the confidence interval for this block,
-            // therefore we cannot reject with p-confidence that the trace has not converged
-            nSignif++;
+            // the mean of the whole trace falls out of the confidence interval for this block and hence we cannot reject with p-confidence that the trace has not converged
+            return false;
         }
     }
     
-    return (double)nSignif;
+    return true;
 }
 
-double StationarityTest::getStatistic(const std::vector<TraceNumeric>& traces)
+bool StationarityTest::assessConvergence(const std::vector<TraceNumeric>& traces)
 {
-    // record the results
-    size_t nSignif = 0;
     
     // get number of chains
     size_t nChains = traces.size();
@@ -92,23 +86,10 @@ double StationarityTest::getStatistic(const std::vector<TraceNumeric>& traces)
         // check if the trace mean is outside this confidence interval
         if (chainMeans[i]-quantile > total_mean || chainMeans[i]+quantile < total_mean)
         {
-            // the mean of the whole trace falls out of the confidence interval for this block,
-            // therefore we cannot reject with p-confidence that the trace has not converged
-            nSignif++;
+            // the mean of the whole trace falls out of the confidence interval for this block and hence we cannot reject with p-confidence that the trace has not converged
+            return false;
         }
     }
     
-    return (double)nSignif;
-}
-
-bool StationarityTest::assessConvergence(const TraceNumeric& trace)
-{
-    size_t nSignif = (size_t)getStatistic(trace);
-    return nSignif == 0;
-}
-
-bool StationarityTest::assessConvergence(const std::vector<TraceNumeric>& traces)
-{
-    size_t nSignif = (size_t)getStatistic(traces);
-    return nSignif == 0;
+    return true;
 }

@@ -14,12 +14,11 @@ EssTest::EssTest(double t) : ConvergenceDiagnosticContinuous(),
     
 }
 
-double EssTest::getStatistic(const TraceNumeric& trace)
-{
-    return trace.getESS();
-}
 
 bool EssTest::assessConvergence(const TraceNumeric& trace)
 {
-    return trace.getESS() > k;
+    
+    // make mean invalid for recalculation
+    return  trace.getESS() > k;
 }
+

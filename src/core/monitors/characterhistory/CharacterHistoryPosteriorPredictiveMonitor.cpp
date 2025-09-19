@@ -26,7 +26,7 @@
 using namespace RevBayesCore;
 
 /* Constructor */
-CharacterHistoryPosteriorPredictiveMonitor::CharacterHistoryPosteriorPredictiveMonitor(TypedDagNode<Tree>* t,  std::vector<StochasticNode<BranchHistory>* > bh, std::uint64_t g, const path &fname, const std::string &del, bool pp, bool l, bool pr, bool ap, bool sm, bool sr) : Monitor(g,t),
+CharacterHistoryPosteriorPredictiveMonitor::CharacterHistoryPosteriorPredictiveMonitor(TypedDagNode<Tree>* t,  std::vector<StochasticNode<BranchHistory>* > bh, unsigned long g, const path &fname, const std::string &del, bool pp, bool l, bool pr, bool ap, bool sm, bool sr) : Monitor(g,t),
     outStream(),
     tree( t ),
     branchHistories(bh),
@@ -157,10 +157,10 @@ std::string CharacterHistoryPosteriorPredictiveMonitor::buildExtendedNewick( Top
 
 
 /** Monitor value at generation gen */
-void CharacterHistoryPosteriorPredictiveMonitor::monitor(std::uint64_t gen) {
+void CharacterHistoryPosteriorPredictiveMonitor::monitor(unsigned long gen) {
     
     // get the printing frequency
-    std::uint64_t samplingFrequency = printgen;
+    unsigned long samplingFrequency = printgen;
     
     if (gen % samplingFrequency == 0) {
         // print the iteration number first

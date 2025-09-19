@@ -23,9 +23,7 @@ using namespace RevBayesCore;
 /**
  * Constructor
  *
- * Here we simply allocate the Proposal object.
- * Initialization follows in initialize() to avoid calling addNode() before the node
- * properties have been set.
+ * Here we simply allocate and initialize the Proposal object.
  */
 EventBirthDeathProposal::EventBirthDeathProposal( StochasticNode<Tree> *n) : Proposal(),
     variable( n ),
@@ -35,6 +33,9 @@ EventBirthDeathProposal::EventBirthDeathProposal( StochasticNode<Tree> *n) : Pro
     accepted_death( 0 ),
     trie_death( 0 )
 {
+    // tell the base class to add the node
+    addNode( variable );
+    
     distribution = dynamic_cast< AbstractCharacterHistoryBirthDeathProcess* >( &variable->getDistribution() );
     if ( distribution == NULL )
     {
@@ -42,10 +43,6 @@ EventBirthDeathProposal::EventBirthDeathProposal( StochasticNode<Tree> *n) : Pro
     }
 }
 
-void EventBirthDeathProposal::initialize() {
-    // tell the base class to add the node
-    addNode( this->variable );
-};
 
 /**
  * The cleanProposal function may be called to clean up memory allocations after AbstractMove
@@ -262,6 +259,7 @@ void EventBirthDeathProposal::swapNodeInternal(DagNode *oldN, DagNode *newN)
         throw RbException("Wrong type of variable for BirthDeathEvent move.");
     }
 }
+
 
 void EventBirthDeathProposal::setProposalTuningParameter(double tp)
 {

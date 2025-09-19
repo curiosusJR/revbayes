@@ -128,7 +128,7 @@ const std::string& MultiValueEvent::getName(size_t i) const
 
 
 
-std::int64_t MultiValueEvent::getNumberOfEvents(void) const
+long MultiValueEvent::getNumberOfEvents(void) const
 {
     return num_events;
 }
@@ -199,7 +199,7 @@ const RbVector<double>& MultiValueEvent::getValues(const std::string &n) const
 }
 
 
-void MultiValueEvent::setNumberOfEvents(std::int64_t n)
+void MultiValueEvent::setNumberOfEvents(long n)
 {
     num_events = n;
 }

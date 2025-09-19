@@ -183,7 +183,7 @@ void TreeSummary::mapDiscrete(Tree &tree, const std::string &n, size_t paramInde
     // 2-d vectors to keep the data (posteriors and states) of the inputTree nodes: [node][data]
     const std::vector<TopologyNode*> &summary_nodes = tree.getNodes();
     //std::vector<std::map<std::string, Sample<std::string> > > stateAbsencePresence(summary_nodes.size(), std::map<std::string, Sample<std::string> >());
-    std::vector<std::map<std::string, std::int64_t> > state_counts(summary_nodes.size(), std::map<std::string, std::int64_t>());
+    std::vector<std::map<std::string, long> > state_counts(summary_nodes.size(), std::map<std::string, long>());
 
     bool interiorOnly = true;
     bool tipsChecked = false;
@@ -836,7 +836,7 @@ void TreeSummary::annotateTree( Tree &tree, AnnotationReport report, bool verbos
 
             if ( clock == true )
             {
-                if ( n->isTip() == false || n->isFossil() || upper != lower )
+                if ( n->isTip() == false || ( ( n->isFossil() || upper != lower) && !n->isSampledAncestorTip() ) )
                 {
                     std::string label = "age_" + StringUtilities::toString( (int)(report.node_ages_HPD * 100) ) + "%_HPD";
                     n->addNodeParameter(label, interval);
@@ -876,7 +876,7 @@ double TreeSummary::cladeProbability(const Clade &c, bool verbose )
 }
 
 
-TreeSummary::Split TreeSummary::collectTreeSample(const TopologyNode& n, RbBitSet& intaxa, std::string newick, std::map<Split, std::int64_t>& cladeCountMap)
+TreeSummary::Split TreeSummary::collectTreeSample(const TopologyNode& n, RbBitSet& intaxa, std::string newick, std::map<Split, long>& cladeCountMap)
 {
     double age = (clock ? n.getAge() : n.getBranchLength() );
 
@@ -1216,7 +1216,7 @@ TopologyNode* TreeSummary::findParentNode(TopologyNode& n, const Split& split, s
 }
 
 
-std::int64_t TreeSummary::getTopologyCount(const RevBayesCore::Tree &tree, bool verbose)
+long TreeSummary::getTopologyCount(const RevBayesCore::Tree &tree, bool verbose)
 {
     summarize( verbose );
 
@@ -1248,7 +1248,7 @@ std::int64_t TreeSummary::getTopologyCount(const RevBayesCore::Tree &tree, bool 
 
 double TreeSummary::getTopologyFrequency(const RevBayesCore::Tree &tree, bool verbose)
 {
-    return getTopologyCount(tree,verbose) / (double)sampleSize(true);
+    return getTopologyCount(tree,verbose)/sampleSize(true);
 }
 
 std::vector<Clade> TreeSummary::getUniqueClades( double min_clade_prob, bool non_trivial_only, bool verbose )
@@ -1933,9 +1933,9 @@ void TreeSummary::setOutgroup(const RevBayesCore::Clade &c)
     outgroup = c;
 }
 
-std::int64_t TreeSummary::sampleSize(bool post) const
+long TreeSummary::sampleSize(bool post) const
 {
-    std::int64_t total = 0;
+    long total = 0;
 
     for(auto& trace: traces)
     {
@@ -1946,7 +1946,7 @@ std::int64_t TreeSummary::sampleSize(bool post) const
 }
 
 
-std::int64_t TreeSummary::splitCount(const Split &n) const
+long TreeSummary::splitCount(const Split &n) const
 {
     auto iter = clade_counts.find(n);
 

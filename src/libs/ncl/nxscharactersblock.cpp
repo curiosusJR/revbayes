@@ -4544,15 +4544,11 @@ void NxsCharactersBlock::HandleMatrix(
 void NxsCharactersBlock::HandleStatelabels(
   NxsToken &token)	/* the token used to read from `in' */
 	{
-	bool semicolonFoundInInnerLoop = false;
-
 	if (datatype == continuous)
 		GenerateNxsException(token, "STATELABELS cannot be specified when the datatype is continuous");
 	charStates.clear();
 	for (;;)
 		{
-        if (semicolonFoundInInnerLoop)
-            break;
 		token.GetNextToken();
 		if (token.Equals(";"))
 			break;
@@ -4573,13 +4569,8 @@ void NxsCharactersBlock::HandleStatelabels(
 		for (;;)
 			{
 			token.GetNextToken();
-			if (token.Equals(","))
+			if (token.Equals(";") || token.Equals(","))
 				break;
-            if (token.Equals(";"))
-                {
-                semicolonFoundInInnerLoop = true;
-                break;
-                }
 			v.push_back(token.GetToken());
 			}
 		}

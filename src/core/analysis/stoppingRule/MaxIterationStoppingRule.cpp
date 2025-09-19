@@ -73,29 +73,12 @@ void MaxIterationStoppingRule::setNumberOfRuns(size_t n)
 
 
 /**
- * Compute the current value of the rule's test statistic:
- * Here, this is current generation number
- */
-double MaxIterationStoppingRule::getStatistic( size_t g )
-{
-    return (double)g;
-}
-
-
-std::string MaxIterationStoppingRule::printAsStatement( size_t g, bool target_only )
-{
-    // We always return an empty string regardless of the arguments
-    std::string statement = "";
-    return statement;
-}
-
-
-/**
  * Should we stop now?
- * Yes, if the current generation number is larger or equal to the maximum generation number.
+ * Yes, if the current iteration number is larger or equal to the maximum iteration number.
  */
 bool MaxIterationStoppingRule::stop( size_t g )
 {
-    // No need to call getStatistic() and go size_t -> double -> size_t
-    return g >= maxGenerations;
+    bool passed = g >= maxGenerations;
+    
+    return passed;
 }

@@ -21,7 +21,10 @@ template <class valueType> class TypedDagNode;
         
         // public member functions
         DispersalExtinctionRootStructureFunction*           clone(void) const;                                                                  //!< Create an independent clone
+        void                                                keep(const DagNode* affecter);
+        void                                                restore(const DagNode *restorer);
         void                                                reInitialized(void);                                                                //!< The arguments have been re-initialized
+        void                                                touch(const DagNode *toucher );
         void                                                update(void);
         
     protected:
@@ -34,7 +37,7 @@ template <class valueType> class TypedDagNode;
         // members
         const TypedDagNode<RbVector<double> >*              root_frequencies;
         const TypedDagNode<Simplex>*                        rangeSize;
-//        const TypedDagNode<std::int64_t>*                            maxRangeSize;
+//        const TypedDagNode<long>*                            maxRangeSize;
         
         std::vector<std::vector<unsigned> >                 bits;
         std::map<std::vector<unsigned>, unsigned>           inverseBits;

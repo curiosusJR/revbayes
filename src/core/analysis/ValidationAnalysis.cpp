@@ -25,7 +25,6 @@
 #include "RbVector.h"
 #include "RbVectorImpl.h"
 #include "StoppingRule.h"
-#include "StochasticNode.h"
 #include "StringUtilities.h"
 
 
@@ -41,7 +40,6 @@ ValidationAnalysis::ValidationAnalysis( const MonteCarloAnalysis &m, size_t n, c
     sampler->removeMonitors();
     
     StochasticVariableMonitor mntr = StochasticVariableMonitor(10, output_directory / "posterior_samples.var", "\t");
-    mntr.setPrintVersion( false );
     sampler->addMonitor( mntr );
     
     size_t run_block_start = size_t(floor( (double(pid)   / num_processes ) * num_runs) );
@@ -76,27 +74,23 @@ ValidationAnalysis::ValidationAnalysis( const MonteCarloAnalysis &m, size_t n, c
         
             // get the model of the analysis
             Model* current_model = current_analysis->getModel().clone();
-            
+        
             // get the DAG nodes of the model
             std::vector<DagNode *> current_ordered_nodes = current_model->getOrderedStochasticNodes();
-            
-            for (auto& node: current_ordered_nodes)
+        
+            for (size_t j = 0; j < current_ordered_nodes.size(); ++j)
             {
-                if ( node->isClamped() )
+                DagNode *the_node = current_ordered_nodes[j];
+            
+                if ( the_node->isStochastic() == true )
                 {
-                    // unclamp stochastic nodes in the model copy and hide them to prevent StochasticVariableMonitor from logging them
-                    node->setHidden(true);
-                    auto stoch_node = dynamic_cast<StochasticNodeBase *>(node);
-                    stoch_node->unclamp();
-                }
-                
-                if ( node->isStochastic() == true )
-                {
-                    node->redraw( SimulationCondition::VALIDATION );
+                    the_node->redraw( SimulationCondition::VALIDATION );
                     
                     // we need to store the new simulated data
-                    node->writeToFile(sim_directory_name);
+                    the_node->writeToFile(sim_directory_name);
+                    
                 }
+            
             }
         
             // now set the model of the current analysis
@@ -244,9 +238,9 @@ void ValidationAnalysis::burnin(size_t generations, size_t tuningInterval)
         if ( runs[i] == NULL ) std::cerr << "Runing bad burnin (pid=" << pid <<", run="<< i << ") of runs.size()=" << runs.size() << "." << std::endl;
         // run the i-th analyses
 #ifdef RB_MPI
-        runs[i]->burnin(generations, MPI_COMM_WORLD, tuningInterval, 0);
+        runs[i]->burnin(generations, MPI_COMM_WORLD, tuningInterval, false);
 #else
-        runs[i]->burnin(generations, tuningInterval, 0);
+        runs[i]->burnin(generations, tuningInterval, false);
 #endif
         if ( process_active == true )
         {
@@ -335,9 +329,9 @@ void ValidationAnalysis::runSim(size_t idx, size_t gen)
     
     
 #ifdef RB_MPI
-    analysis->run(gen, rules, MPI_COMM_WORLD, 100, "", 0, 0);
+    analysis->run(gen, rules, MPI_COMM_WORLD, 100, "", 0, false);
 #else
-    analysis->run(gen, rules, 100, "", 0, 0);
+    analysis->run(gen, rules, 100, "", 0, false);
 #endif
 
 }

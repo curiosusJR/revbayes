@@ -2,7 +2,6 @@
 #define BinarySwitchProposal_H
 
 #include <iosfwd>
-#include <cstdint>
 
 #include "Proposal.h"
 
@@ -25,7 +24,7 @@ template <class variableType> class StochasticNode;
     class BinarySwitchProposal : public Proposal {
         
     public:
-        BinarySwitchProposal( StochasticNode<std::int64_t> *n);                                                                    //!<  constructor
+        BinarySwitchProposal( StochasticNode<long> *n);                                                                    //!<  constructor
         
         // Basic utility functions
         void                                cleanProposal(void);                                                                //!< Clean up proposal
@@ -47,8 +46,8 @@ template <class variableType> class StochasticNode;
     private:
         // parameters
         
-        StochasticNode<std::int64_t>*               variable;                                                                           //!< The variable the Proposal is working on
-        std::int64_t                                storedValue;                                                                        //!< The stored value of the Proposal used for rejections.
+        StochasticNode<long>*               variable;                                                                           //!< The variable the Proposal is working on
+        long                                storedValue;                                                                        //!< The stored value of the Proposal used for rejections.
     };
     
 }
