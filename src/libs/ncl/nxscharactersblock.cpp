@@ -4130,6 +4130,7 @@ void NxsCharactersBlock::HandleStdMatrix(
 			NxsString nameStr;
 			if (labels)
 				{
+                token.SetLabileFlagBit(NxsToken::hyphenNotPunctuation + NxsToken::preserveUnderscores);
 				token.GetNextToken();
 				nameStr = token.GetToken();
 				if (taxaBlockNeedsLabels)

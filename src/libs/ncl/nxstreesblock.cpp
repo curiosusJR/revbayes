@@ -1165,6 +1165,7 @@ void NxsTreesBlock::HandleTranslateCommand(NxsToken &token)
 			break;
 		NxsString key(token.GetTokenReference().c_str());
 		unsigned keyInd = taxa->TaxLabelToNumber(key);
+        token.SetLabileFlagBit(NxsToken::hyphenNotPunctuation + NxsToken::preserveUnderscores);
 		token.GetNextToken();
 		NxsString value(token.GetTokenReference().c_str());
 		unsigned valueInd = taxa->TaxLabelToNumber(value);
@@ -1393,6 +1394,7 @@ void NxsTreesBlock::ProcessTokenStreamIntoTree(
 	int prevToken = NXS_TREE_OPEN_PARENS_TOKEN;
 	if (allowUnquotedSpaces)
 	    token.SetLabileFlagBit(NxsToken::spaceDoesNotBreakToken);
+    token.SetLabileFlagBit(NxsToken::hyphenNotPunctuation + NxsToken::preserveUnderscores);
 	token.GetNextToken();
 	for (;;)
 		{
@@ -1714,6 +1716,7 @@ void NxsTreesBlock::ProcessTokenStreamIntoTree(
         if (allowUnquotedSpaces)
 	        token.SetLabileFlagBit(NxsToken::spaceDoesNotBreakToken);
 
+        token.SetLabileFlagBit(NxsToken::hyphenNotPunctuation + NxsToken::preserveUnderscores);
 		token.GetNextToken();
 		}
 	td.flags |= NxsFullTreeDescription::NXS_TREE_PROCESSED;

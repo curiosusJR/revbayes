@@ -173,6 +173,7 @@ void NxsTaxaBlock::HandleTaxLabels(NxsToken &token)
 	labelToIndex.clear();
 	for (unsigned i = 0; i < dimNTax; i++)
 		{
+        token.SetLabileFlagBit(NxsToken::hyphenNotPunctuation + NxsToken::preserveUnderscores);
 		token.GetNextToken();
 		try
 			{
