@@ -983,7 +983,7 @@ const std::map<std::string, size_t> &Tree::getTaxonBitSetMap(void) const
             taxon_bitset_map[ordered_taxa[i]] = i;
         }
     }
-    
+
     return taxon_bitset_map;
 }
 
@@ -1335,12 +1335,12 @@ void Tree::makeRootBifurcating(const Clade& outgroup)
             }
         }
         nodes_to_move.erase(nodes_to_move.begin() + good_outgroup);
-          
+
         TopologyNode *new_child = new TopologyNode();
         double parent_age = root->getAge();
-  
+
         double new_age = parent_age - half_bl;
-    
+
         for (size_t i = 0; i < nodes_to_move.size(); ++i)
         {
             TopologyNode* tmp = nodes_to_move[i];
@@ -1360,7 +1360,7 @@ void Tree::makeRootBifurcating(const Clade& outgroup)
     {
         throw RbException() << "Cannot reroot on '" << outgroup.toString() << "'; the root has more than 3 children.";
     } // end-if the root node has 3 children
-    
+
 
     // we need to reset the root so that the vector of nodes get filled again with the new number of nodes
     // it only makes sense to reindex the nodes because we have more nodes now!
@@ -1371,7 +1371,7 @@ void Tree::makeRootBifurcating(const Clade& outgroup)
     // the next time someone call getTaxonBitset() it will be rebuilt
     taxon_bitset_map.clear();
 
-} 
+}
 
 
 bool Tree::tryReadIndicesFromParameters(bool remove)
@@ -1528,7 +1528,7 @@ void Tree::printForUser( std::ostream &o, const std::string &sep, int l, bool le
     o.precision( 3 );
 
     o << *this;
-    
+
     o.setf( previousFlags );
     o.precision( previousPrecision );
 }
@@ -1538,7 +1538,7 @@ void Tree::printForSimpleStoring( std::ostream &o, const std::string &sep, int l
     std::stringstream ss;
     ss << *this;
     std::string s = ss.str();
-    if ( l > 0 ) 
+    if ( l > 0 )
     {
         StringUtilities::fillWithSpaces(s, l, left);
     }
@@ -1576,6 +1576,45 @@ void Tree::collapseSampledAncestors()
     setRoot(root, true);
 }
 
+// Pick a random node which is not the root, a tip, or the parent of a sampled ancestor.
+// First try doing so at random; if that does not work, use the more computationally demanding strategy of finding all eligible nodes.
+TopologyNode* Tree::pickRandomInternalNode(RandomNumberGenerator* rng) const
+{
+    TopologyNode* node;
+
+    for (size_t i = 0; i < 10; i++)
+    {
+        double u = rng->uniform01();
+        size_t node_idx = size_t( std::floor(getNumberOfNodes() * u) );
+        node = (TopologyNode*)&getNode(node_idx);
+        if ( !node->isRoot() && !node->isTip() && !node->isSampledAncestorParent() ) return node;
+    }
+
+    // check that there is at least one node which is not the root, a tip, or the parent of a SA
+    std::vector<TopologyNode*> eligible_nodes;
+
+    for (auto& to_check: getNodes())
+    {
+        if ( !to_check->isRoot() && !to_check->isTip() && !to_check->isSampledAncestorParent() )
+        {
+            eligible_nodes.push_back( to_check );
+        }
+    }
+
+    if (eligible_nodes.size() == 0)
+    {
+        node = NULL;
+    }
+    else
+    {
+        double u = rng->uniform01();
+        size_t node_idx = size_t( std::floor(eligible_nodes.size() * u) );
+        node = eligible_nodes[node_idx];
+    }
+
+    return node;
+}
+
 void Tree::pruneTaxa(const RbBitSet& prune_map )
 {
     nodes.clear();
@@ -1587,7 +1626,7 @@ void Tree::pruneTaxa(const RbBitSet& prune_map )
     {
         nodes[i]->setIndex(i);
     }
-    
+
     // we also need to reset our internal variables
     num_nodes = nodes.size();
     num_tips = (num_nodes+1) / 2;
@@ -1848,7 +1887,7 @@ void Tree::renumberNodes(const Tree &reference)
     {
       getTipNodeWithName(tipNames[i]).setIndex(reference.getTipNodeWithName(tipNames[i]).getIndex());
     }
-    
+
 }
 
 
@@ -1911,7 +1950,7 @@ void Tree::reroot(const std::string &outgroup, bool make_bifurcating, bool reind
     {
         throw RbException() << "Cannot reroot the tree because we could not find an outgroup with name '" << outgroup << "'.";
     }
-    
+
     TopologyNode& outgroup_node = getTipNode( outgroup_index );
     reroot(outgroup_node, make_bifurcating, reindex);
 
@@ -1923,7 +1962,7 @@ void Tree::reroot(TopologyNode &n, bool make_bifurcating, bool reindex)
     // reset parent/child relationships
     reverseParentChild( n.getParent() );
     n.getParent().setParent( NULL );
-    
+
     // do we want to make the tree bifurcating?
     if ( make_bifurcating == true )
     {
@@ -1932,7 +1971,7 @@ void Tree::reroot(TopologyNode &n, bool make_bifurcating, bool reindex)
 
         // second, we suppress any internal nodes of outdegree 1 ("knuckles" / sampled ancestors)
         suppressOutdegreeOneNodes(true);
-        
+
     } // end-if we do not want to make the tree bifurcating
 
     // set the new root
@@ -1947,7 +1986,7 @@ void Tree::reroot(TopologyNode &n, bool make_bifurcating, bool reindex)
 void Tree::resetTaxonBitSetMap( void )
 {
     taxon_bitset_map.clear();
-    
+
     // get all taxon names
     std::vector<Taxon> unordered_taxa = getTaxa();
     std::vector<std::string> ordered_taxa;
@@ -1964,7 +2003,7 @@ void Tree::resetTaxonBitSetMap( void )
     {
         taxon_bitset_map[ordered_taxa[i]] = i;
     }
-    
+
 }
 
 
@@ -2134,7 +2173,7 @@ void Tree::setTaxonName(const std::string& current_name, const std::string& new_
     TopologyNode& node = getTipNodeWithName( current_name );
     Taxon& t = node.getTaxon();
     t.setName( new_name );
-    
+
     // clear the taxon bitset map
     // the next time someone call getTaxonBitset() it will be rebuilt
     taxon_bitset_map.clear();
@@ -2194,7 +2233,7 @@ void Tree::suppressOutdegreeOneNodes(bool replace)
                 reindexNodes();
             }
         }
-            
+
         int outdegreeOneNodes = 0;
         for (size_t i = 0; i < nodes.size(); i++)
         {
@@ -2203,7 +2242,7 @@ void Tree::suppressOutdegreeOneNodes(bool replace)
                 outdegreeOneNodes++;
             }
         }
-            
+
         // we have eliminated cases of -->A--> but not of -->A-->B-->; call myself recursively to handle
         // the latter as well
         if (outdegreeOneNodes > 0) suppressOutdegreeOneNodes( false );
@@ -2212,7 +2251,7 @@ void Tree::suppressOutdegreeOneNodes(bool replace)
     // reindex here, in case suppressOutdegreeOneNodes
     // * replaced outdegree-1 nodes ("knuckles") by new tips with no index (replace = true)
     // * removed them entirely                                             (replace = false)
-    
+
     // we need to reset the root so that the vector of nodes get filled again with the new number of nodes
     setRoot( &getRoot(), true );
 
@@ -2265,7 +2304,7 @@ void Tree::unroot( void )
 // Write this object into a file in its default format.
 void Tree::writeToFile( const path &dir, const std::string &fn ) const
 {
-    
+
     // do not write a file if the tree is invalid
     if (this->getNumberOfTips() > 1)
     {

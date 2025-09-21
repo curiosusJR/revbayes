@@ -129,9 +129,10 @@ namespace RevBayesCore {
         void                                                makeRootBifurcating(const Clade& o);                                                              //!< Make the root bifurcating.
         void                                                orderNodesByIndex();
         json                                                toJSON() const;             //!< Prints tree for user
+        TopologyNode*                                       pickRandomInternalNode(RandomNumberGenerator* rng) const;                                           //!< Pick a random node which is not the root, a tip, or the parent of a sampled ancestor.
         void                                                printForUser(std::ostream &o, const std::string &sep, int l, bool left) const;                   //!< Prints tree for user
         void                                                printForSimpleStoring(std::ostream &o, const std::string &sep, int l, bool left, bool flatten = true) const; //!< Prints tree for storing without rounding
-        void                                                printForComplexStoring(std::ostream &o, const std::string &sep, int l, bool left, bool flatten = true) const; //!< Prints tree for storing with rounding (mainly checkpointing) 
+        void                                                printForComplexStoring(std::ostream &o, const std::string &sep, int l, bool left, bool flatten = true) const; //!< Prints tree for storing with rounding (mainly checkpointing)
         void                                                pruneTaxa(const RbBitSet& bs);
         void                                                collapseSampledAncestors();
         void                                                renumberNodes(const Tree &reference);                                                               //!< Change node ids to be as in reference
