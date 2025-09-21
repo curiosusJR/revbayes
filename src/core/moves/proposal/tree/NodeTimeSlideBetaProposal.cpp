@@ -27,7 +27,7 @@ NodeTimeSlideBetaProposal::NodeTimeSlideBetaProposal( StochasticNode<Tree> *n, d
 {
     // tell the base class to add the node
     addNode( variable );
-    
+
 }
 
 
@@ -49,7 +49,7 @@ void NodeTimeSlideBetaProposal::cleanProposal( void )
  */
 NodeTimeSlideBetaProposal* NodeTimeSlideBetaProposal::clone( void ) const
 {
-    
+
     return new NodeTimeSlideBetaProposal( *this );
 }
 
@@ -62,7 +62,7 @@ NodeTimeSlideBetaProposal* NodeTimeSlideBetaProposal::clone( void ) const
 const std::string& NodeTimeSlideBetaProposal::getProposalName( void ) const
 {
     static std::string name = "NodeTimeSlideBeta";
-    
+
     return name;
 }
 
@@ -87,22 +87,28 @@ double NodeTimeSlideBetaProposal::getProposalTuningParameter( void ) const
  */
 double NodeTimeSlideBetaProposal::doProposal( void )
 {
-    
+
     // Get random number generator
     RandomNumberGenerator* rng     = GLOBAL_RNG;
-    
+
     Tree& tau = variable->getValue();
-    
-    // pick a random node which is not the root, a tip, or the parent of a SA
-    TopologyNode* node;
-    do {
-        double u = rng->uniform01();
-        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
-        node = &tau.getNode(index);
-    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent());
-    
+
+
+    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
+    TopologyNode* node = tau.pickRandomInternalNode(rng);
+    if (node == NULL)
+    {
+        if (logMCMC >=1 or debugMCMC >=1)
+        {
+            std::cerr << "mvNodeTimeSlideBeta has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
+        }
+
+        storedNode = nullptr;
+        return RbConstants::Double::neginf;
+    }
+
     TopologyNode& parent = node->getParent();
-    
+
     // we need to work with the times
     double parent_age  = parent.getAge();
     double my_age      = node->getAge();
@@ -111,29 +117,29 @@ double NodeTimeSlideBetaProposal::doProposal( void )
     {
         child_Age = node->getChild( 1 ).getAge();
     }
-    
+
     // now we store all necessary values
     storedNode = node;
     storedAge = my_age;
-    
+
     // draw new ages and compute the hastings ratio at the same time
     double m = (my_age-child_Age) / (parent_age-child_Age);
     double a = delta * m + offset;
     double b = delta * (1.0-m) + offset;
     double new_m = RbStatistics::Beta::rv(a, b, *rng);
     double my_new_age = (parent_age-child_Age) * new_m + child_Age;
-    
+
     // compute the Hastings ratio
     double forward = RbStatistics::Beta::lnPdf(a, b, new_m);
     double new_a = delta * new_m + offset;
     double new_b = delta * (1.0-new_m) + offset;
     double backward = RbStatistics::Beta::lnPdf(new_a, new_b, m);
-    
+
     // set the age
     tau.getNode( node->getIndex() ).setAge( my_new_age );
-    
+
     return backward - forward;
-    
+
 }
 
 
@@ -142,7 +148,7 @@ double NodeTimeSlideBetaProposal::doProposal( void )
  */
 void NodeTimeSlideBetaProposal::prepareProposal( void )
 {
-    
+
 }
 
 
@@ -156,13 +162,13 @@ void NodeTimeSlideBetaProposal::prepareProposal( void )
  */
 void NodeTimeSlideBetaProposal::printParameterSummary(std::ostream &o, bool name_only) const
 {
-    
+
     o << "delta = ";
     if (name_only == false)
     {
         o << delta;
     }
-    
+
 }
 
 
@@ -175,10 +181,10 @@ void NodeTimeSlideBetaProposal::printParameterSummary(std::ostream &o, bool name
  */
 void NodeTimeSlideBetaProposal::undoProposal( void )
 {
-    
+    if (storedNode == nullptr) return;
+
     // undo the proposal
     variable->getValue().getNode( storedNode->getIndex() ).setAge( storedAge );
-    
 }
 
 
@@ -190,9 +196,9 @@ void NodeTimeSlideBetaProposal::undoProposal( void )
  */
 void NodeTimeSlideBetaProposal::swapNodeInternal(DagNode *oldN, DagNode *newN)
 {
-    
+
     variable = static_cast<StochasticNode<Tree>* >(newN) ;
-    
+
 }
 
 
@@ -211,7 +217,7 @@ void NodeTimeSlideBetaProposal::setProposalTuningParameter(double tp)
  */
 void NodeTimeSlideBetaProposal::tune( double rate )
 {
-    
+
     if ( rate > 0.44 )
     {
         delta /= (1.0 + ((rate-0.44)/0.56) );
@@ -220,6 +226,5 @@ void NodeTimeSlideBetaProposal::tune( double rate )
     {
         delta *= (2.0 - rate/0.44 );
     }
-    
-}
 
+}

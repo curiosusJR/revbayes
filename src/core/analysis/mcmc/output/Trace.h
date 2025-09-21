@@ -16,14 +16,14 @@
 namespace RevBayesCore {
 
     class Serializable;
-    
+
     template <class valueType>
     class Trace : public AbstractTrace {
-        
+
     public:
-        
+
         Trace(void)                     = default;
-        
+
         virtual                         ~Trace(void) {}
 
         bool                            operator==(const Trace &t) const                { return this == &t; }
@@ -40,29 +40,29 @@ namespace RevBayesCore {
         virtual void                    addObject(const valueType& d);
         virtual void                    addObject(valueType&& d);
         virtual void                    addObject(valueType* d);
-        virtual int                     isCoveredInInterval(const std::string &v, double i, bool verbose);
+        virtual int                     isCoveredInInterval(const std::string &v, double i, bool verbose, std::optional<bool> stochastic);
         bool                            isDirty(void) const                             { return dirty; };
         void                            setDirty(bool d)                                { dirty = d; };
         void                            removeLastObject();
         void                            removeObjectAtIndex(int index);
-        
+
         // getters and setters
         size_t                          getBurnin() const                               { return burnin; }
         const std::vector<valueType>&   getValues() const                               { return values; }
 
         virtual void                    setBurnin(long b);
         void                            setValues(std::vector<valueType> v)             { values = v; }
-        
+
 
         // getters and setters
         const path&                     getFileName() const                             { return fileName; }
         const std::string&              getParameterName() const                        { return parmName; }
-        
+
         void                            setFileName(path fn)                            { fileName = fn; }
         void                            setParameterName(std::string pm)                { parmName = pm; }
-        
+
     protected:
-        
+
         size_t                          burnin = 0;
         path                            fileName;
         std::string                     parmName;
@@ -82,7 +82,7 @@ namespace RevBayesCore {
 
         return o;
     }                                //!< Overloaded output operator
-    
+
 
     /**
      * Typedefs
@@ -98,16 +98,17 @@ namespace RevBayesCore {
      * Template specializations
      */
     template <>
-    int Trace<double>::isCoveredInInterval(const std::string &v, double alpha, bool verbose);
+    int Trace<double>::isCoveredInInterval(const std::string &v, double alpha, bool verbose, std::optional<bool> stochastic);
 
     template <>
-    int Trace<long>::isCoveredInInterval(const std::string &v, double alpha, bool verbose);
+    // PL comment: outdated? int Trace<long>::isCoveredInInterval(const std::string &v, double alpha, bool verbose);
+    int Trace<std::int64_t>::isCoveredInInterval(const std::string &v, double alpha, bool verbose, std::optional<bool> stochastic);
 
     template <>
-    int Trace<RbVector<double > >::isCoveredInInterval(const std::string &v, double i, bool verbose);
+    int Trace<RbVector<double > >::isCoveredInInterval(const std::string &v, double i, bool verbose, std::optional<bool> stochastic);
 
     template <>
-    int Trace<Simplex>::isCoveredInInterval(const std::string &v, double i, bool verbose);
+    int Trace<Simplex>::isCoveredInInterval(const std::string &v, double i, bool verbose, std::optional<bool> stochastic);
 
 }
 
@@ -157,7 +158,7 @@ RevBayesCore::Trace<valueType>* RevBayesCore::Trace<valueType>::clone() const
 
 
 template <class valueType>
-int RevBayesCore::Trace<valueType>::isCoveredInInterval(const std::string & /*v*/, double /*alpha*/, bool /*verbose*/)
+int RevBayesCore::Trace<valueType>::isCoveredInInterval(const std::string & /*v*/, double /*alpha*/, bool /*verbose*/, std::optional<bool> /*stochastic*/)
 {
     throw RbException() << "Cannot compute interval coverage for '" << parmName << "' because there are not trace objects implemented for this value type.";
 }

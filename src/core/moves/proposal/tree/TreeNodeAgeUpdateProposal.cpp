@@ -119,13 +119,18 @@ double TreeNodeAgeUpdateProposal::doProposal( void )
 
     Tree& tau = speciesTree->getValue();
 
-    // pick a random node which is not the root, a tip, or the parent of a SA
-    TopologyNode* node;
-    do {
-        double u = rng->uniform01();
-        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
-        node = &tau.getNode(index);
-    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent() );
+    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
+    TopologyNode* node = tau.pickRandomInternalNode(rng);
+    if (node == NULL)
+    {
+        if (logMCMC >=1 or debugMCMC >=1)
+        {
+            std::cerr << "mvSpeciesNodeTimeSlideUniform has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
+        }
+
+        storedNode = nullptr;
+        return RbConstants::Double::neginf;
+    }
 
     TopologyNode& parent = node->getParent();
 
@@ -366,10 +371,9 @@ void TreeNodeAgeUpdateProposal::printParameterSummary(std::ostream &o, bool name
  */
 void TreeNodeAgeUpdateProposal::undoProposal( void )
 {
+    if (storedNode == nullptr) return;
 
     // undo the proposal
-
-
     TopologyNode& parent = storedNode->getParent();
 
     // we need to work with the times
@@ -390,7 +394,6 @@ void TreeNodeAgeUpdateProposal::undoProposal( void )
 
         for (size_t j=0; j<nodes.size(); ++j)
         {
-
             double new_a = nodes[j]->getAge();
             double a = new_a;
             if ( new_a > my_new_age )
@@ -405,7 +408,6 @@ void TreeNodeAgeUpdateProposal::undoProposal( void )
             // set the new age of this gene tree node
             geneTree.getNode( nodes[j]->getIndex() ).setAge( a );
         }
-
     }
 
     // set the age of the species tree node

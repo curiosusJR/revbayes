@@ -30,18 +30,18 @@ RateAgeBetaShift::RateAgeBetaShift(StochasticNode<Tree> *tr, std::vector<Stochas
     num_accepted_current_period( 0 ),
     num_accepted_total( 0 )
 {
-    
+
     addNode( tree );
     addNode( rates );
     for (std::vector<StochasticNode<double>* >::iterator it = rates_vec.begin(); it != rates_vec.end(); ++it)
     {
         // get the pointer to the current node
         DagNode* the_node = *it;
-        
+
         addNode( the_node );
     }
 
-    
+
 }
 
 
@@ -52,7 +52,7 @@ RateAgeBetaShift::~RateAgeBetaShift( void )
 {
     // nothing special to do
     // everything should be taken care of in the base class
-    
+
 }
 
 
@@ -61,7 +61,7 @@ RateAgeBetaShift::~RateAgeBetaShift( void )
 /* Clone object */
 RateAgeBetaShift* RateAgeBetaShift::clone( void ) const
 {
-    
+
     return new RateAgeBetaShift( *this );
 }
 
@@ -69,9 +69,9 @@ RateAgeBetaShift* RateAgeBetaShift::clone( void ) const
 
 const std::string& RateAgeBetaShift::getMoveName( void ) const
 {
-    
+
     static std::string name = "RateAgeBetaShift";
-    
+
     return name;
 }
 
@@ -97,14 +97,15 @@ size_t RateAgeBetaShift::getNumberAcceptedTotal( void ) const
 /** Perform the move */
 void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHeat )
 {
-    
+
     // Get random number generator
     RandomNumberGenerator* rng     = GLOBAL_RNG;
-    
+
     Tree& tau = tree->getValue();
+
     RbOrderedSet<DagNode*> affected;
     tree->initiateGetAffectedNodes( affected );
-    
+
     // pick a random node which is not the root and neithor the direct descendant of the root
     TopologyNode* node;
     size_t node_idx = 0;
@@ -112,10 +113,31 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
         double u = rng->uniform01();
         node_idx = size_t( std::floor(tau.getNumberOfNodes() * u) );
         node = &tau.getNode(node_idx);
-    } while ( node->isRoot() || node->isTip() ); 
-    
+    } while ( node->isRoot() || node->isTip() );
+
+
+    if (tau.getNumberOfTips() <= 2)
+    {
+        return;
+    }
+
+    // 1. pick a random node which is not the root, a tip, or the parent of a sampled ancestor
+    TopologyNode* node = tau.pickRandomInternalNode(rng);
+    if (node == NULL)
+    {
+        if (logMCMC >=1 or debugMCMC >=1)
+        {
+            std::cerr << "mvRateAgeBetaShift has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
+        }
+
+        stored_node = nullptr;
+        return;
+    }
+    size_t node_idx = node->getIndex();
+>>>>>>> origin/development
+
     TopologyNode& parent = node->getParent();
-    
+
     // we need to work with the times
     double parent_age  = parent.getAge();
     double my_age      = node->getAge();
@@ -124,47 +146,47 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
     {
         child_Age = node->getChild( 1 ).getAge();
     }
-    
+
     // now we store all necessary values
     stored_node = node;
     stored_age = my_age;
-    
-    
+
+
     stored_rates[node_idx] = (rates == NULL ? rates_vec[node_idx]->getValue() : rates->getValue()[node_idx]);
     for (size_t i = 0; i < node->getNumberOfChildren(); ++i)
     {
         size_t child_idx = node->getChild(i).getIndex();
         stored_rates[child_idx] = (rates == NULL ? rates_vec[child_idx]->getValue() : rates->getValue()[child_idx]);
     }
-    
-    
+
+
     // draw new ages and compute the hastings ratio at the same time
     double m = (my_age-child_Age) / (parent_age-child_Age);
     double a = delta * m + 1.0;
     double b = delta * (1.0-m) + 1.0;
     double new_m = RbStatistics::Beta::rv(a, b, *rng);
-        
+
     double my_new_age = (parent_age-child_Age) * new_m + child_Age;
-    
+
     // compute the Hastings ratio
     double forward = RbStatistics::Beta::lnPdf(a, b, new_m);
     double new_a = delta * new_m + 1.0;
     double new_b = delta * (1.0-new_m) + 1.0;
     double backward = RbStatistics::Beta::lnPdf(new_a, new_b, m);
-    
+
     // set the age
     tau.getNode(node_idx).setAge( my_new_age );
-    
+
     // touch the tree so that the likelihoods are getting stored
     tree->touch();
-    
+
     // get the probability ratio of the tree
     double tree_prob_ratio = tree->getLnProbabilityRatio();
-    
-    
+
+
     // set the rates
     double my_new_rate = (parent_age - my_age) * stored_rates[node_idx] / (parent_age - my_new_age);
-    
+
     // now we set the new value
     // this will automatically call a touch
     if ( rates == NULL )
@@ -179,13 +201,13 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
     // get the probability ratio of the new rate
     double rates_prob_ratio = ( rates == NULL ? rates_vec[node_idx]->getLnProbabilityRatio() : 0.0 );
     double jacobian = log((parent_age - my_age) / (parent_age - my_new_age));
-    
+
     for (size_t i = 0; i < node->getNumberOfChildren(); i++)
     {
         size_t child_idx = node->getChild(i).getIndex();
         double a = node->getChild(i).getAge();
         double child_new_rate = (my_age - a) * stored_rates[child_idx] / (my_new_age - a);
-                
+
         // now we set the new value
         // this will automatically call a touch
         if ( rates == NULL )
@@ -203,14 +225,14 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
             rates_prob_ratio += rates_vec[child_idx]->getLnProbabilityRatio();
         }
         jacobian += log((my_age - a) / (my_new_age - a));
-        
+
     }
     if ( rates != NULL )
     {
         rates_prob_ratio = rates->getLnProbabilityRatio();
     }
-    
-    
+
+
     // we also need to get the prob ratio of all descendants of the tree
     double tree_like_ratio = 0.0;
     const std::vector<DagNode*>& tree_desc = tree->getChildren();
@@ -245,7 +267,7 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
             }
         }
     }
-    
+
     // we also need to get the prob ratio of all descendants of the rates
     double rates_like_ratio = 0.0;
     if ( rates == NULL )
@@ -271,7 +293,7 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
                         {
                             rates_prob_ratio += the_node->getLnProbabilityRatio();
                         }
-                        
+
                     }
                 }
                 else
@@ -323,7 +345,7 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
             }
         }
     }
-    
+
     double hastings_ratio = backward - forward + jacobian;
     double ln_posterior_ratio = pHeat * (lHeat * (tree_like_ratio + rates_like_ratio) + prHeat * (tree_prob_ratio + rates_prob_ratio));
     double ln_acceptance_ratio = ln_posterior_ratio + hastings_ratio;
@@ -332,7 +354,7 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
     {
         num_accepted_total++;
         num_accepted_current_period++;
-        
+
         tree->touch();
         tree->keep();
         if ( rates == NULL )
@@ -385,7 +407,7 @@ void RateAgeBetaShift::performMcmcMove( double prHeat, double lHeat, double pHea
         {
             num_accepted_total++;
             num_accepted_current_period++;
-            
+
             //keep
             tree->touch();
             tree->keep();
@@ -439,10 +461,10 @@ void RateAgeBetaShift::printSummary(std::ostream &o, bool current_period) const
 {
     std::streamsize previousPrecision = o.precision();
     std::ios_base::fmtflags previousFlags = o.flags();
-    
+
     o << std::fixed;
     o << std::setprecision(4);
-    
+
     // print the name
     const std::string &n = getMoveName();
     size_t spaces = 40 - (n.length() > 40 ? 40 : n.length());
@@ -452,7 +474,7 @@ void RateAgeBetaShift::printSummary(std::ostream &o, bool current_period) const
         o << " ";
     }
     o << " ";
-    
+
     // print the DagNode name
     const std::string &dn_name = (*nodes.begin())->getName();
     spaces = 20 - (dn_name.length() > 20 ? 20 : dn_name.length());
@@ -462,7 +484,7 @@ void RateAgeBetaShift::printSummary(std::ostream &o, bool current_period) const
         o << " ";
     }
     o << " ";
-    
+
     // print the weight
     int w_length = 4;
     if (weight > 0) w_length -= (int)log10(weight);
@@ -472,7 +494,7 @@ void RateAgeBetaShift::printSummary(std::ostream &o, bool current_period) const
     }
     o << weight;
     o << " ";
-    
+
     size_t num_tried = num_tried_total;
     size_t num_accepted = num_accepted_total;
     if (current_period == true)
@@ -480,7 +502,7 @@ void RateAgeBetaShift::printSummary(std::ostream &o, bool current_period) const
         num_tried = num_tried_current_period;
         num_accepted = num_accepted_current_period;
     }
-    
+
     // print the number of tries
     int t_length = 9;
     if (num_tried > 0) t_length -= (int)log10(num_tried);
@@ -490,47 +512,48 @@ void RateAgeBetaShift::printSummary(std::ostream &o, bool current_period) const
     }
     o << num_tried;
     o << " ";
-    
+
     // print the number of accepted
     int a_length = 9;
     if (num_accepted > 0) a_length -= (int)log10(num_accepted);
-    
+
     for (int i = 0; i < a_length; ++i)
     {
         o << " ";
     }
     o << num_accepted;
     o << " ";
-    
+
     // print the acceptance ratio
     double ratio = num_accepted / (double)num_tried;
     if (num_tried == 0) ratio = 0;
     int r_length = 5;
-    
+
     for (int i = 0; i < r_length; ++i)
     {
         o << " ";
     }
     o << ratio;
     o << " ";
-    
+
 //    proposal->printParameterSummary( o );
     o << "delta = " << delta;
-    
+
     o << std::endl;
-    
+
     o.setf(previousFlags);
     o.precision(previousPrecision);
-    
+
 }
 
 
 void RateAgeBetaShift::reject( void )
 {
-    
+    if (stored_node == nullptr) return;
+
     // undo the proposal
     tree->getValue().getNode( stored_node->getIndex() ).setAge( stored_age );
-    
+
     // undo the rates
     size_t node_idx = stored_node->getIndex();
     if ( rates == NULL )
@@ -556,14 +579,13 @@ void RateAgeBetaShift::reject( void )
         }
     }
 
-    
 #ifdef ASSERTIONS_TREE
     if ( fabs(storedAge - storedNode->getAge()) > 1E-8 )
     {
         throw RbException("Error while rejecting RateAgeBetaShift proposal: Node ages were not correctly restored!");
     }
 #endif
-    
+
 }
 
 /**
@@ -578,7 +600,7 @@ void RateAgeBetaShift::resetMoveCounters( void )
 
 void RateAgeBetaShift::swapNodeInternal(DagNode *oldN, DagNode *newN)
 {
-    
+
     if (oldN == tree)
     {
         tree = static_cast<StochasticNode<Tree>* >(newN) ;
@@ -603,7 +625,7 @@ void RateAgeBetaShift::swapNodeInternal(DagNode *oldN, DagNode *newN)
             }
         }
     }
-    
+
 }
 
 
@@ -627,11 +649,11 @@ void RateAgeBetaShift::setNumberAcceptedTotal( size_t na )
 
 void RateAgeBetaShift::tune( void )
 {
-    
+
     if ( num_tried_current_period > 2 )
     {
         double rate = num_accepted_current_period / double(num_tried_current_period);
-        
+
         if ( rate > 0.44 )
         {
             delta /= (1.0 + ((rate-0.44)/0.56) );
@@ -643,5 +665,3 @@ void RateAgeBetaShift::tune( void )
     }
 
 }
-
-

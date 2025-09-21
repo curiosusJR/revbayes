@@ -28,7 +28,9 @@
 #include "Integer.h"
 #include "ModelObject.h"
 #include "RbBoolean.h"
+#include "RbConstants.h"
 #include "RbException.h"
+#include "RbMathCombinatorialFunctions.h"
 #include "RbVector.h"
 #include "RbVectorImpl.h"
 #include "RealPos.h"
@@ -36,6 +38,7 @@
 #include "RevPtr.h"
 #include "RevVariable.h"
 #include "RlConstantNode.h"
+#include "RlUserInterface.h"
 #include "TraceTree.h"
 #include "Tree.h"
 #include "TypeSpec.h"
@@ -56,10 +59,10 @@ TraceTree::TraceTree(void) : WorkspaceToCoreWrapperObject<RevBayesCore::TraceTre
 
 TraceTree::TraceTree(const RevBayesCore::TraceTree& x) : WorkspaceToCoreWrapperObject<RevBayesCore::TraceTree>( new RevBayesCore::TraceTree(x) )
 {
-    
+
     // initialize the methods
     initMethods();
-    
+
 }
 
 
@@ -72,7 +75,7 @@ TraceTree::TraceTree(const RevBayesCore::TraceTree& x) : WorkspaceToCoreWrapperO
 
 TraceTree* TraceTree::clone(void) const
 {
-    
+
     return new TraceTree(*this);
 }
 
@@ -88,14 +91,14 @@ void TraceTree::constructInternalObject( void )
 
 RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std::vector<Argument> &args, bool &found)
 {
-    
-    
+
+
     if ( name == "setBurnin" )
     {
         found = true;
-        
+
         int burnin = 0;
-        
+
         RevObject& b = args[0].getVariable()->getRevObject();
         if ( b.isType( Integer::getClassTypeSpec() ) )
         {
@@ -106,16 +109,16 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
             double burninFrac = static_cast<const Probability &>(b).getValue();
             burnin = int( floor( value->size()*burninFrac ) );
         }
-        
+
         this->value->setBurnin( burnin );
-        
+
         return NULL;
     }
     else if ( name == "setOutgroup" )
     {
         found = true;
 
-        const RevBayesCore::Clade &c    = static_cast<const Clade &>( args[0].getVariable()->getRevObject() ).getValue();
+        const RevBayesCore::Clade &c = static_cast<const Clade &>( args[0].getVariable()->getRevObject() ).getValue();
 
         this->value->setOutgroup(c);
 
@@ -125,113 +128,135 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
     else if ( name == "summarize" )
     {
         found = true;
-        
+
         double treeCI       = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
         double minCladeProb = static_cast<const Probability &>( args[1].getVariable()->getRevObject() ).getValue();
-        bool verbose = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
-        
-        this->value->printTreeSummary(std::cout, treeCI, verbose);
+        bool stochastic     = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
+        bool verbose        = static_cast<const RlBoolean &>( args[3].getVariable()->getRevObject() ).getValue();
+
+        // no special handling needed here when the credible set is empty
+        this->value->printTreeSummary(std::cout, treeCI, stochastic, verbose);
         this->value->printCladeSummary(std::cout, minCladeProb, verbose);
-        
+
         return NULL;
     }
     else if ( name == "cladeProbability" )
     {
         found = true;
-        
-        const RevBayesCore::Clade &c    = static_cast<const Clade &>( args[0].getVariable()->getRevObject() ).getValue();
+
+        const RevBayesCore::Clade &c = static_cast<const Clade &>( args[0].getVariable()->getRevObject() ).getValue();
         bool verbose = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
-        
+
         double p = this->value->cladeProbability( c, verbose );
-        
+
         return new RevVariable( new Probability( p ) );
-        
+
     }
     else if ( name == "jointCladeProbability" )
     {
         found = true;
-        
-        const RevBayesCore::RbVector<RevBayesCore::Clade> &c    = static_cast<const ModelVector<Clade> &>( args[0].getVariable()->getRevObject() ).getValue();
+
+        const RevBayesCore::RbVector<RevBayesCore::Clade> &c = static_cast<const ModelVector<Clade> &>( args[0].getVariable()->getRevObject() ).getValue();
         bool verbose = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
-        
+
         double p = this->value->jointCladeProbability( c, verbose );
-        
+
         return new RevVariable( new Probability( p ) );
-        
+
     }
     else if ( name == "computeEntropy" )
     {
         found = true;
-        
+
         double tree_CI  = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
-        int num_taxa    = (int)static_cast<const Integer &>( args[1].getVariable()->getRevObject() ).getValue();
+        bool stochastic = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
         bool verbose    = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
-        
-        double entropy = this->value->computeEntropy(tree_CI, num_taxa, verbose);
-        
+
+        double entropy = this->value->computeEntropy(tree_CI, stochastic, verbose);
+
+        // Make sure we are not attempting to calculate entropy from an empty credible set, and display a warning if we are.
+        // This will be the case if the only contributing term is the logarithm of the number of topologies.
+        int num_taxa = (int)this->value->objectAt( 0 ).getTaxa().size();
+        double ln_ntopologies = RevBayesCore::RbMath::lnFactorial(2 * num_taxa - 5) - RevBayesCore::RbMath::lnFactorial(num_taxa - 3) - (num_taxa - 3) * RbConstants::LN2;
+
+        if (entropy == ln_ntopologies)
+        {
+            std::stringstream warn;
+            warn << "Warning: No trees included in the " << 100 * tree_CI << "% credible set. Try setting probabilistic=FALSE.";
+            RBOUT( warn.str() );
+        }
+
         return new RevVariable( new RealPos(entropy) );
     }
     else if ( name == "computePairwiseRFDistances" )
     {
         found = true;
-        
-        double tree_CI         = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
-        bool verbose           = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
-        
-        std::vector<double> distances = this->value->computePairwiseRFDistance(tree_CI, verbose);
-        
+
+        double tree_CI  = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
+        bool stochastic = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
+        bool verbose    = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
+
+        std::vector<double> distances = this->value->computePairwiseRFDistance(tree_CI, stochastic, verbose);
+
         ModelVector<RealPos> *rl_dist = new ModelVector<RealPos>;
-        for (size_t i=0; i<distances.size(); ++i)
+        for (size_t i = 0; i < distances.size(); ++i)
         {
             rl_dist->push_back( distances[i] );
         }
-        
-        return new RevVariable( rl_dist );
+
+        if ( rl_dist->size() == 0 )
+        {
+            throw RbException() << "No trees included in the " << 100 * tree_CI << "% credible set. Try setting probabilistic=FALSE.";
+        }
+        else
+        {
+            return new RevVariable( rl_dist );
+        }
     }
     else if ( name == "computeTreeLengths" )
     {
         found = true;
-        
+
         std::vector<double> tree_lengths = this->value->computeTreeLengths();
-        
+
         ModelVector<RealPos> *rl_tree_lengths = new ModelVector<RealPos>;
         for (size_t i=0; i<tree_lengths.size(); ++i)
         {
             rl_tree_lengths->push_back( tree_lengths[i] );
         }
-        
+
         return new RevVariable( rl_tree_lengths );
     }
     else if ( name == "size" || name == "getNumberSamples" )
     {
         found = true;
-        
+
         bool post = static_cast<const RlBoolean &>( args[0].getVariable()->getRevObject() ).getValue();
-        
+
         int n = (int)this->value->size(post);
-        
+
         return new RevVariable( new Natural( n ) );
     }
     else if ( name == "getBurnin" )
     {
         found = true;
-        
-        int n = this->value->getBurnin();
-        
+
+        size_t n = this->value->getBurnin();
+
         return new RevVariable( new Natural( n ) );
     }
     else if ( name == "getTree" )
     {
         found = true;
-        
+
         // get the index which is the only argument for this method
-        long i    = static_cast<const Natural &>( args[0].getVariable()->getRevObject() ).getValue() - 1;
-        
+        std::int64_t i = static_cast<const Natural &>( args[0].getVariable()->getRevObject() ).getValue() - 1;
+
         bool post = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
         i += post * this->value->getBurnin();
 
         const RevBayesCore::Tree &current_tree = this->value->objectAt( i );
-        
+
         Tree *rl_tree = NULL;
         if ( this->value->isClock() == true )
         {
@@ -246,41 +271,47 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
     else if ( name == "getTopologyFrequency" )
     {
         found = true;
-        
+
         // get the tree which is the only argument for this method
         const RevBayesCore::Tree &current_tree = static_cast<const Tree &>( args[0].getVariable()->getRevObject() ).getValue();
         bool verbose = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
         int f = this->value->getTopologyFrequency( current_tree, verbose );
-        
+
         return new RevVariable( new Natural( f ) );
     }
     else if ( name == "getUniqueClades" )
     {
         found = true;
-        
-        double clade_CI       = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
-        bool non_trivial_only  = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
+
+        double min_clade_prob = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
+        bool non_trivial_only = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
         bool verbose = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
-        
-        std::vector<RevBayesCore::Clade> clades = this->value->getUniqueClades(clade_CI, non_trivial_only, verbose);
-        
+
+        std::vector<RevBayesCore::Clade> clades = this->value->getUniqueClades(min_clade_prob, non_trivial_only, verbose);
+
         ModelVector<Clade> *rl_clades = new ModelVector<Clade>;
         for (size_t i=0; i<clades.size(); ++i)
         {
             rl_clades->push_back( clades[i] );
         }
         return new RevVariable( rl_clades );
-        
+
     }
     else if ( name == "getUniqueTrees" )
     {
         found = true;
-        
-        double tree_CI       = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
-        bool verbose = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
-        
-        std::vector<RevBayesCore::Tree> trees = this->value->getUniqueTrees(tree_CI, verbose);
-        
+
+        double tree_CI  = static_cast<const Probability &>( args[0].getVariable()->getRevObject() ).getValue();
+        bool stochastic = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
+        bool verbose    = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
+
+        std::vector<RevBayesCore::Tree> trees = this->value->getUniqueTrees(tree_CI, stochastic, verbose);
+
+        if ( trees.size() == 0 )
+        {
+            throw RbException() << "No trees included in the " << 100 * tree_CI << "% credible set. Try setting probabilistic=FALSE.";
+        }
+
         if ( this->value->isClock() == true )
         {
             ModelVector<TimeTree> *rl_trees = new ModelVector<TimeTree>;
@@ -299,25 +330,34 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
             }
             return new RevVariable( rl_trees );
         }
-        
+
     }
     else if ( name == "isTreeCovered" )
     {
         found = true;
-        
-        // get the tree which is the only argument for this method
+
         const RevBayesCore::Tree &current_tree = static_cast<const Tree &>( args[0].getVariable()->getRevObject() ).getValue();
-        double ci_size = static_cast<const Probability &>( args[1].getVariable()->getRevObject() ).getValue();
-        bool verbose = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
-        bool cov = this->value->isCoveredInInterval(current_tree, ci_size, verbose);
-        
-        return new RevVariable( new RlBoolean( cov ) );
+        double ci_size    = static_cast<const Probability &>( args[1].getVariable()->getRevObject() ).getValue();
+        bool stochastic   = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
+        bool verbose      = static_cast<const RlBoolean &>( args[3].getVariable()->getRevObject() ).getValue();
+        int coverage_code = this->value->isCoveredInInterval(current_tree.getPlainNewickRepresentation(), ci_size, verbose, stochastic);
+
+        /* TraceTree::isCoveredInInterval() actually returns 0 for TRUE and -1 for FALSE, which is a hacky solution that
+         * makes it play nice with validation analyses. The ultimate reason for this is that when we are dealing with
+         * scalars rather than trees, we can use the integer to indicate not just whether a given value is excluded
+         * from the credible interval, but also whether it is excluded because it is too large, or too small. For trees,
+         * this doesn't work, but ValidationAnalysis has to be able to treat a TraceTree and a scalar Trace the same way.
+         */
+
+        bool covered = coverage_code == 0 ? true : false;
+
+        // no special handling needed here when the credible set is empty
+        return new RevVariable( new RlBoolean( covered ) );
     }
     else if ( name == "getTMRCA" )
     {
         found = true;
-        
-        // get the tree which is the only argument for this method
+
         RevBayesCore::Clade this_clade = static_cast<const Clade &>( args[0].getVariable()->getRevObject() ).getValue();
         bool strict = static_cast<const RlBoolean &>( args[1].getVariable()->getRevObject() ).getValue();
         bool stem   = static_cast<const RlBoolean &>( args[2].getVariable()->getRevObject() ).getValue();
@@ -337,37 +377,32 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
             bits.set( index );
         }
         this_clade.setBitRepresentation( bits );
-        
+
         for (size_t i=this->value->getBurnin(); i<trees.size(); ++i)
         {
-            // default age
-            double age = -1;
-            
             const RevBayesCore::TopologyNode* mrca = trees[i].getRoot().getMrca( this_clade, strict );
             if ( mrca != NULL )
             {
                 if ( stem == false )
                 {
-                    age = mrca->getAge();
+                    ages.push_back( mrca->getAge() );
                 }
                 else if ( mrca->isRoot() == false )
                 {
-                    age = mrca->getParent().getAge();
+                    ages.push_back( mrca->getParent().getAge() );
                 }
             }
-            
-            ages.push_back( age );
         }
-        
+
         return new RevVariable( new ModelVector<Real>( ages ) );
     }
     else if ( name == "getTrees" )
     {
         found = true;
-        
+
         std::vector<RevBayesCore::Tree> trees = this->value->getValues();
         size_t start_index = this->value->getBurnin();
-        
+
         if ( this->value->isClock() == true )
         {
             ModelVector<TimeTree> *rl_trees = new ModelVector<TimeTree>;
@@ -386,9 +421,9 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
             }
             return new RevVariable( rl_trees );
         }
-        
+
     }
-    
+
     return RevObject::executeMethod( name, args, found );
 }
 
@@ -397,38 +432,38 @@ RevPtr<RevVariable> TraceTree::executeMethod(std::string const &name, const std:
 
 const std::string& TraceTree::getClassType(void)
 {
-    
+
     static std::string rev_type = "TraceTree";
-    
+
     return rev_type;
 }
+
 
 /** Get class type spec describing type of object */
 
 const TypeSpec& TraceTree::getClassTypeSpec(void)
 {
-    
+
     static TypeSpec rev_type_spec = TypeSpec( getClassType(), new TypeSpec( WorkspaceToCoreWrapperObject<RevBayesCore::TraceTree>::getClassTypeSpec() ) );
-    
+
     return rev_type_spec;
 }
-
 
 
 /** Return member rules (no members) */
 
 const MemberRules& TraceTree::getParameterRules(void) const
 {
-    
+
     static MemberRules modelMemberRules;
     static bool rules_set = false;
-    
+
     if ( !rules_set )
     {
-        
+
         rules_set = true;
     }
-    
+
     return modelMemberRules;
 }
 
@@ -437,9 +472,9 @@ const MemberRules& TraceTree::getParameterRules(void) const
 
 const TypeSpec& TraceTree::getTypeSpec( void ) const
 {
-    
+
     static TypeSpec type_spec = getClassTypeSpec();
-    
+
     return type_spec;
 }
 
@@ -447,97 +482,147 @@ const TypeSpec& TraceTree::getTypeSpec( void ) const
 
 void TraceTree::initMethods( void )
 {
-    
+
     ArgumentRules* burninArgRules = new ArgumentRules();
     std::vector<TypeSpec> burninTypes;
     burninTypes.push_back( Probability::getClassTypeSpec() );
     burninTypes.push_back( Integer::getClassTypeSpec() );
-    burninArgRules->push_back( new ArgumentRule("burnin",      burninTypes, "The fraction/number of samples to disregard as burnin.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    burninArgRules->push_back( new ArgumentRule("burnin", burninTypes, "The fraction/number of samples to disregard as burnin.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     this->methods.addFunction( new MemberProcedure( "setBurnin", RlUtils::Void, burninArgRules) );
-    
-    ArgumentRules* getBurninArgRules = new ArgumentRules();
-    this->methods.addFunction( new MemberProcedure( "getBurnin", Natural::getClassTypeSpec(), getBurninArgRules) );
-    
+
     ArgumentRules* outgroupArgRules = new ArgumentRules();
     outgroupArgRules->push_back( new ArgumentRule("clade", Clade::getClassTypeSpec(), "The (monophyletic) outgroup.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     this->methods.addFunction( new MemberProcedure( "setOutgroup", RlUtils::Void, outgroupArgRules) );
 
     ArgumentRules* summarizeArgRules = new ArgumentRules();
-    summarizeArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The size of the credible set to print.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
-    summarizeArgRules->push_back( new ArgumentRule("minCladeProbability", Probability::getClassTypeSpec(), "The minimum clade probability used when printing.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.05)) );
+    summarizeArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The cumulative probability of trees to be included in the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
+    summarizeArgRules->push_back( new ArgumentRule("minCladeProbability", Probability::getClassTypeSpec(), "Print only clades with a probability above this threshold.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.05)) );
+    summarizeArgRules->push_back( new ArgumentRule("probabilistic", RlBoolean::getClassTypeSpec(), "Should we construct the credible set probabilistically if we cannot obtain a cumulative probability precisely equal to credibleTreeSetSize?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     summarizeArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "summarize", RlUtils::Void, summarizeArgRules) );
-    
+
     ArgumentRules* cladeProbArgRules = new ArgumentRules();
-    cladeProbArgRules->push_back( new ArgumentRule("clade", Clade::getClassTypeSpec(), "The (monophyletic) clade.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    cladeProbArgRules->push_back( new ArgumentRule("clade", Clade::getClassTypeSpec(), "The clade whose probability is to be computed.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     cladeProbArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "cladeProbability", Probability::getClassTypeSpec(), cladeProbArgRules) );
-    
+
     ArgumentRules* jointCladeProbArgRules = new ArgumentRules();
-    jointCladeProbArgRules->push_back( new ArgumentRule("clades", ModelVector<Clade>::getClassTypeSpec(), "The set of (monophyletic) clades.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    jointCladeProbArgRules->push_back( new ArgumentRule("clades", ModelVector<Clade>::getClassTypeSpec(), "The set of clades whose joint probability is to be computed.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     jointCladeProbArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "jointCladeProbability", Probability::getClassTypeSpec(), jointCladeProbArgRules) );
-   
+<<<<<<< HEAD
+
     ArgumentRules* getNumberSamplesArgRules = new ArgumentRules();
     getNumberSamplesArgRules->push_back( new ArgumentRule("post", RlBoolean::getClassTypeSpec(), "Get the post-burnin number of samples?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
     this->methods.addFunction( new MemberProcedure( "getNumberSamples", Natural::getClassTypeSpec(), getNumberSamplesArgRules) );
-    
+
     ArgumentRules* getSizeArgRules = new ArgumentRules();
     getSizeArgRules->push_back( new ArgumentRule("post", RlBoolean::getClassTypeSpec(), "Get the post-burnin number of samples?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
     this->methods.addFunction( new MemberProcedure( "size", Natural::getClassTypeSpec(), getSizeArgRules) );
-    
+
     ArgumentRules* getTreeArgRules = new ArgumentRules();
     getTreeArgRules->push_back( new ArgumentRule("index", Natural::getClassTypeSpec(), "The index of the tree.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     getTreeArgRules->push_back( new ArgumentRule("post", RlBoolean::getClassTypeSpec(), "Use post-burnin indices?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
     this->methods.addFunction( new MemberProcedure( "getTree", Tree::getClassTypeSpec(), getTreeArgRules) );
-    
+
     ArgumentRules* getUniqueTreesArgRules = new ArgumentRules();
     getUniqueTreesArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The size of the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
     getUniqueTreesArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "getUniqueTrees", ModelVector<Tree>::getClassTypeSpec(), getUniqueTreesArgRules) );
-    
+
     ArgumentRules* get_tmrca_arg_rules = new ArgumentRules();
     get_tmrca_arg_rules->push_back( new ArgumentRule("clade",  Clade::getClassTypeSpec(), "The clade for which to compute the TMRCA.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     get_tmrca_arg_rules->push_back( new ArgumentRule("strict", RlBoolean::getClassTypeSpec(), "Return -1 if the clade is non-monophyletic and otherwise the non-strict TMRCA.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     get_tmrca_arg_rules->push_back( new ArgumentRule("stem",   RlBoolean::getClassTypeSpec(), "Do we want the age of the stem or crown of this clade?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
     this->methods.addFunction( new MemberProcedure( "getTMRCA", ModelVector<Real>::getClassTypeSpec(), get_tmrca_arg_rules) );
-    
+
     ArgumentRules* get_trees_arg_rules = new ArgumentRules();
     this->methods.addFunction( new MemberProcedure( "getTrees", ModelVector<Tree>::getClassTypeSpec(), get_trees_arg_rules) );
-    
+
     ArgumentRules* get_unique_clades_arg_rules = new ArgumentRules();
     get_unique_clades_arg_rules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The size of the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
     get_unique_clades_arg_rules->push_back( new ArgumentRule("nonTrivial", RlBoolean::getClassTypeSpec(), "Retrieve only the non-trivial clades.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     get_unique_clades_arg_rules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Inlcude only non-trivial clades.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "getUniqueClades", ModelVector<Clade>::getClassTypeSpec(), get_unique_clades_arg_rules) );
-    
+
     ArgumentRules* getTopologyFrequencyArgRules = new ArgumentRules();
     getTopologyFrequencyArgRules->push_back( new ArgumentRule("tree", Tree::getClassTypeSpec(), "The tree.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     getTopologyFrequencyArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "getTopologyFrequency", Natural::getClassTypeSpec(), getTopologyFrequencyArgRules) );
-    
-    
+
+
     ArgumentRules* is_covered_arg_rules = new ArgumentRules();
     is_covered_arg_rules->push_back( new ArgumentRule("tree", Tree::getClassTypeSpec(), "The tree.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
     is_covered_arg_rules->push_back( new ArgumentRule("ci_size", Probability::getClassTypeSpec(), "The size of the credible interval.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
     is_covered_arg_rules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "isTreeCovered", RlBoolean::getClassTypeSpec(), is_covered_arg_rules) );
-    
-    
-    ArgumentRules* computePairwiseRFDistanceArgRules = new ArgumentRules();
-    computePairwiseRFDistanceArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The size of the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
-    computePairwiseRFDistanceArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
-    this->methods.addFunction( new MemberProcedure( "computePairwiseRFDistances", ModelVector<RealPos>::getClassTypeSpec(), computePairwiseRFDistanceArgRules) );
-    
-    ArgumentRules* computeTreeLengthsArgRules = new ArgumentRules();
-    this->methods.addFunction( new MemberProcedure( "computeTreeLengths", ModelVector<RealPos>::getClassTypeSpec(), computeTreeLengthsArgRules) );
-    
+=======
+>>>>>>> origin/development
+
     ArgumentRules* computeEntropyArgRules = new ArgumentRules();
-    computeEntropyArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The size of the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
-    computeEntropyArgRules->push_back( new ArgumentRule("num_taxa", Natural::getClassTypeSpec(), "The number of taxa in the dataset.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    computeEntropyArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The cumulative probability of trees to be included in the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
+    computeEntropyArgRules->push_back( new ArgumentRule("probabilistic", RlBoolean::getClassTypeSpec(), "Should we construct the credible set probabilistically if we cannot obtain a cumulative probability precisely equal to credibleTreeSetSize?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     computeEntropyArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
     this->methods.addFunction( new MemberProcedure( "computeEntropy", RealPos::getClassTypeSpec(), computeEntropyArgRules) );
-    
+
+    ArgumentRules* computePairwiseRFDistanceArgRules = new ArgumentRules();
+    computePairwiseRFDistanceArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The cumulative probability of trees to be included in the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
+    computePairwiseRFDistanceArgRules->push_back( new ArgumentRule("probabilistic", RlBoolean::getClassTypeSpec(), "Should we construct the credible set probabilistically if we cannot obtain a cumulative probability precisely equal to credibleTreeSetSize?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    computePairwiseRFDistanceArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    this->methods.addFunction( new MemberProcedure( "computePairwiseRFDistances", ModelVector<RealPos>::getClassTypeSpec(), computePairwiseRFDistanceArgRules) );
+
+    ArgumentRules* computeTreeLengthsArgRules = new ArgumentRules();
+    this->methods.addFunction( new MemberProcedure( "computeTreeLengths", ModelVector<RealPos>::getClassTypeSpec(), computeTreeLengthsArgRules) );
+
+    ArgumentRules* getSizeArgRules = new ArgumentRules();
+    getSizeArgRules->push_back( new ArgumentRule("post", RlBoolean::getClassTypeSpec(), "Get the post-burnin number of samples?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
+    this->methods.addFunction( new MemberProcedure( "size", Natural::getClassTypeSpec(), getSizeArgRules) );
+
+    ArgumentRules* getNumberSamplesArgRules = new ArgumentRules();
+    getNumberSamplesArgRules->push_back( new ArgumentRule("post", RlBoolean::getClassTypeSpec(), "Get the post-burnin number of samples?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
+    this->methods.addFunction( new MemberProcedure( "getNumberSamples", Natural::getClassTypeSpec(), getNumberSamplesArgRules) );
+
+    ArgumentRules* getBurninArgRules = new ArgumentRules();
+    this->methods.addFunction( new MemberProcedure( "getBurnin", Natural::getClassTypeSpec(), getBurninArgRules) );
+
+    ArgumentRules* getTreeArgRules = new ArgumentRules();
+    getTreeArgRules->push_back( new ArgumentRule("index", Natural::getClassTypeSpec(), "The index of the tree.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    getTreeArgRules->push_back( new ArgumentRule("post", RlBoolean::getClassTypeSpec(), "Use post-burnin indices?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
+    this->methods.addFunction( new MemberProcedure( "getTree", Tree::getClassTypeSpec(), getTreeArgRules) );
+
+    ArgumentRules* getTopologyFrequencyArgRules = new ArgumentRules();
+    getTopologyFrequencyArgRules->push_back( new ArgumentRule("tree", Tree::getClassTypeSpec(), "The tree.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    getTopologyFrequencyArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    this->methods.addFunction( new MemberProcedure( "getTopologyFrequency", RealPos::getClassTypeSpec(), getTopologyFrequencyArgRules) );
+
+    ArgumentRules* getUniqueCladesArgRules = new ArgumentRules();
+    getUniqueCladesArgRules->push_back( new ArgumentRule("minCladeProbability", Probability::getClassTypeSpec(), "List only clades with a probability above this threshold.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.05)) );
+    getUniqueCladesArgRules->push_back( new ArgumentRule("nonTrivial", RlBoolean::getClassTypeSpec(), "Retrieve only the non-trivial clades.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    getUniqueCladesArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    this->methods.addFunction( new MemberProcedure( "getUniqueClades", ModelVector<Clade>::getClassTypeSpec(), getUniqueCladesArgRules) );
+
+    ArgumentRules* getUniqueTreesArgRules = new ArgumentRules();
+    getUniqueTreesArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The cumulative probability of trees to be included in the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
+    getUniqueTreesArgRules->push_back( new ArgumentRule("probabilistic", RlBoolean::getClassTypeSpec(), "Should we construct the credible set probabilistically if we cannot obtain a cumulative probability precisely equal to credibleTreeSetSize?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    getUniqueTreesArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    this->methods.addFunction( new MemberProcedure( "getUniqueTrees", ModelVector<Tree>::getClassTypeSpec(), getUniqueTreesArgRules) );
+
+    ArgumentRules* isCoveredArgRules = new ArgumentRules();
+    isCoveredArgRules->push_back( new ArgumentRule("tree", Tree::getClassTypeSpec(), "The tree.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    isCoveredArgRules->push_back( new ArgumentRule("credibleTreeSetSize", Probability::getClassTypeSpec(), "The size of the credible set.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new Probability(0.95)) );
+    isCoveredArgRules->push_back( new ArgumentRule("probabilistic", RlBoolean::getClassTypeSpec(), "Should we construct the credible set probabilistically if we cannot obtain a cumulative probability precisely equal to credibleTreeSetSize?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    isCoveredArgRules->push_back( new ArgumentRule("verbose", RlBoolean::getClassTypeSpec(), "Printing verbose output.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    this->methods.addFunction( new MemberProcedure( "isTreeCovered", RlBoolean::getClassTypeSpec(), isCoveredArgRules) );
+
+    ArgumentRules* getTmrcaArgRules = new ArgumentRules();
+    getTmrcaArgRules->push_back( new ArgumentRule("clade",  Clade::getClassTypeSpec(), "A clade object containing the taxa whose TMRCA (time to the most recent common ancestor) is to be computed.", ArgumentRule::BY_VALUE, ArgumentRule::ANY) );
+    getTmrcaArgRules->push_back( new ArgumentRule("strict", RlBoolean::getClassTypeSpec(), "Do not report the TMRCA of given taxa for those trees in which the taxa do not form an exclusive clade.", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(true)) );
+    getTmrcaArgRules->push_back( new ArgumentRule("stem",   RlBoolean::getClassTypeSpec(), "Do we want the age of the stem or crown of this clade?", ArgumentRule::BY_VALUE, ArgumentRule::ANY, new RlBoolean(false)) );
+    this->methods.addFunction( new MemberProcedure("getTMRCA", ModelVector<Real>::getClassTypeSpec(), getTmrcaArgRules) );
+
+    ArgumentRules* getTreesArgRules = new ArgumentRules();
+    this->methods.addFunction( new MemberProcedure( "getTrees", ModelVector<Tree>::getClassTypeSpec(), getTreesArgRules) );
+
 }
 
 
@@ -545,22 +630,6 @@ void TraceTree::initMethods( void )
 
 void TraceTree::printValue(std::ostream &o, bool user) const
 {
-    
+
     o << "TreeTrace (" << getValue().getFileName() << ")";
-}
-
-
-/** Set a member variable */
-
-void TraceTree::setConstParameter(const std::string& name, const RevPtr<const RevVariable> &var)
-{
-    
-    if ( name == "xxx")
-    {
-        
-    }
-    else
-    {
-        RevObject::setConstParameter(name, var);
-    }
 }

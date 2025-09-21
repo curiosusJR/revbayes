@@ -45,7 +45,7 @@ NodeRateTimeSlideUniformProposal::NodeRateTimeSlideUniformProposal( StochasticNo
 {
     // tell the base class to add the node
     addNode( variable );
-    
+
     for(size_t i = 0; i < rates_vector.size(); i++)
     {
         addNode( rates_vector[i] );
@@ -72,7 +72,7 @@ void NodeRateTimeSlideUniformProposal::cleanProposal( void )
  */
 NodeRateTimeSlideUniformProposal* NodeRateTimeSlideUniformProposal::clone( void ) const
 {
-    
+
     return new NodeRateTimeSlideUniformProposal( *this );
 }
 
@@ -85,7 +85,7 @@ NodeRateTimeSlideUniformProposal* NodeRateTimeSlideUniformProposal::clone( void 
 const std::string& NodeRateTimeSlideUniformProposal::getProposalName( void ) const
 {
     static std::string name = "NodeRateTimeSlideUniform";
-    
+
     return name;
 }
 
@@ -107,29 +107,34 @@ double NodeRateTimeSlideUniformProposal::getProposalTuningParameter( void ) cons
  */
 double NodeRateTimeSlideUniformProposal::doProposal( void )
 {
-    
+
     // Get random number generator
     RandomNumberGenerator* rng     = GLOBAL_RNG;
-    
+
     Tree& tau = variable->getValue();
-    
+
     if (tau.getNumberOfTips() <= 2)
     {
         return 0.0;
     }
 
-    // pick a random node which is not the root, a tip, or the parent of a SA
-    TopologyNode* node;
-    do {
-        double u = rng->uniform01();
-        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
-        node = &tau.getNode(index);
-    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent() );
-    
+    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
+    TopologyNode* node = tau.pickRandomInternalNode(rng);
+    if (node == NULL)
+    {
+        if (logMCMC >=1 or debugMCMC >=1)
+        {
+            std::cerr << "mvNodeRateTimeSlideUniform has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
+        }
+
+        storedNode = nullptr;
+        return RbConstants::Double::neginf;
+    }
+
     TopologyNode& parent = node->getParent();
     TopologyNode& childA = node->getChild( 0 );
     TopologyNode& childB = node->getChild( 1 );
-    
+
     size_t node_index   = node->getIndex();
     size_t childA_index = childA.getIndex();
     size_t childB_index = childB.getIndex();
@@ -140,18 +145,18 @@ double NodeRateTimeSlideUniformProposal::doProposal( void )
     double childA_age = childA.getAge();
     double childB_age = childB.getAge();
     double child_Age  = std::max(childA_age, childB_age);
-    
+
     // now we store all necessary values
     storedNode = node;
     storedAge = my_age;
-    
+
     double prev_node_time   = parent_age - my_age;
     double prev_childA_time = my_age - childA_age;
     double prev_childB_time = my_age - childB_age;
 
     // draw new ages and compute the hastings ratio at the same time
     double my_new_age = (parent_age-child_Age) * rng->uniform01() + child_Age;
-    
+
     double node_time   = parent_age - my_new_age;
     double childA_time = my_new_age - childA_age;
     double childB_time = my_new_age - childB_age;
@@ -159,7 +164,7 @@ double NodeRateTimeSlideUniformProposal::doProposal( void )
 
     // set the age
     tau.getNode(node_index).setAge( my_new_age );
-    
+
     // set the rates
     if( rates_node != NULL )
     {
@@ -189,7 +194,7 @@ double NodeRateTimeSlideUniformProposal::doProposal( void )
     double ln_denominator = log(node_time)      + log(childA_time)      + log(childB_time);
 
     return ln_numerator - ln_denominator;
-    
+
 }
 
 
@@ -198,7 +203,7 @@ double NodeRateTimeSlideUniformProposal::doProposal( void )
  */
 void NodeRateTimeSlideUniformProposal::prepareProposal( void )
 {
-    
+
 }
 
 
@@ -212,7 +217,7 @@ void NodeRateTimeSlideUniformProposal::prepareProposal( void )
  */
 void NodeRateTimeSlideUniformProposal::printParameterSummary(std::ostream &o, bool name_only) const
 {
-    
+
 }
 
 
@@ -225,10 +230,11 @@ void NodeRateTimeSlideUniformProposal::printParameterSummary(std::ostream &o, bo
  */
 void NodeRateTimeSlideUniformProposal::undoProposal( void )
 {
-    
+    if (storedNode == nullptr) return;
+
     // undo the proposal
     storedNode->setAge( storedAge );
-    
+
     if( rates_node != NULL )
     {
         rates_node->getValue() = stored_rates;
@@ -269,7 +275,7 @@ void NodeRateTimeSlideUniformProposal::swapNodeInternal(DagNode *oldN, DagNode *
             }
         }
     }
-    
+
 }
 
 
@@ -288,6 +294,5 @@ void NodeRateTimeSlideUniformProposal::setProposalTuningParameter(double tp)
  */
 void NodeRateTimeSlideUniformProposal::tune( double rate )
 {
-    
-}
 
+}

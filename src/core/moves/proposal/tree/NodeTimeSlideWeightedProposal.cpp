@@ -27,14 +27,14 @@ NodeTimeSlideWeightedProposal::NodeTimeSlideWeightedProposal( StochasticNode<Tre
 {
     // tell the base class to add the node
     addNode( variable );
-    
+
     for (size_t i = 1; i <= blocks; ++i)
     {
         double x = i / (1.0 + blocks);
         double q = RbStatistics::Beta::quantile( 0.25, 0.25, x);
         interval.push_back( q );
     }
-    
+
 }
 
 
@@ -56,7 +56,7 @@ void NodeTimeSlideWeightedProposal::cleanProposal( void )
  */
 NodeTimeSlideWeightedProposal* NodeTimeSlideWeightedProposal::clone( void ) const
 {
-    
+
     return new NodeTimeSlideWeightedProposal( *this );
 }
 
@@ -69,7 +69,7 @@ NodeTimeSlideWeightedProposal* NodeTimeSlideWeightedProposal::clone( void ) cons
 const std::string& NodeTimeSlideWeightedProposal::getProposalName( void ) const
 {
     static std::string name = "NodeTimeSlideWeighted";
-    
+
     return name;
 }
 
@@ -95,22 +95,28 @@ double NodeTimeSlideWeightedProposal::getProposalTuningParameter( void ) const
  */
 double NodeTimeSlideWeightedProposal::doProposal( void )
 {
-    
+
     // Get random number generator
     RandomNumberGenerator* rng     = GLOBAL_RNG;
-    
+
     Tree& tau = variable->getValue();
-    
-    // pick a random node which is not the root, a tip, or the parent of a SA
-    TopologyNode* node;
-    do {
-        double u = rng->uniform01();
-        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
-        node = &tau.getNode(index);
-    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent() );
-    
+
+
+    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
+    TopologyNode* node = tau.pickRandomInternalNode(rng);
+    if (node == NULL)
+    {
+        if (logMCMC >=1 or debugMCMC >=1)
+        {
+            std::cerr << "mvNodeTimeSlide has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
+        }
+
+        storedNode = nullptr;
+        return RbConstants::Double::neginf;
+    }
+
     TopologyNode& parent = node->getParent();
-    
+
     // we need to work with the times
     double parent_age  = parent.getAge();
     double my_age      = node->getAge();
@@ -119,11 +125,11 @@ double NodeTimeSlideWeightedProposal::doProposal( void )
     {
         child_Age = node->getChild( 1 ).getAge();
     }
-    
+
     // we store all necessary values
     storedNode = node;
     storedAge = my_age;
-    
+
     // approximate the likelihood curve for this node
     std::vector<double> lnl(1,0.0);
     // get the affected dag nodes for the posterior computation
@@ -137,14 +143,14 @@ double NodeTimeSlideWeightedProposal::doProposal( void )
     {
         double newAge = interval[i] * f + child_Age;
         tau.getNode(node->getIndex()).setAge( newAge );
-        
+
         double lnLikelihood = variable->getLnProbability();
         for (RbOrderedSet<DagNode*>::iterator it = affected.begin(); it != affected.end(); ++it)
         {
             lnLikelihood += (*it)->getLnProbability();
         }
         lnl.push_back( lnLikelihood );
-        
+
         // compute the integral (marginal likelihood)
         marginal += (pre_lnl+lnLikelihood)/2.0 * (interval[i] - prev_x);
         prev_x = interval[i];
@@ -157,7 +163,7 @@ double NodeTimeSlideWeightedProposal::doProposal( void )
     for (size_t i = 0; i < (blocks+2); ++i) {
         lnl[i] /= marginal;
     }
-    
+
     // randomly draw a new age (using the cdf of the weight function)
     double u = rng->uniform01();
     double proposedAge = 0.0;
@@ -178,10 +184,10 @@ double NodeTimeSlideWeightedProposal::doProposal( void )
         u -= block;
         index++;
     }
-    
+
     // set the age
     tau.getNode(node->getIndex()).setAge( proposedAge );
-    
+
     // compute Hastings ratio (ratio of the weights)
     double weight_old = 1.0, weight_new = 1.0;
     prev_x = 0.0;
@@ -208,9 +214,9 @@ double NodeTimeSlideWeightedProposal::doProposal( void )
         prev_x = interval[i];
         pre_lnl = lnl[i+1];
     }
-    
+
     return log( weight_old / weight_new );
-    
+
 }
 
 
@@ -219,7 +225,7 @@ double NodeTimeSlideWeightedProposal::doProposal( void )
  */
 void NodeTimeSlideWeightedProposal::prepareProposal( void )
 {
-    
+
 }
 
 
@@ -233,7 +239,7 @@ void NodeTimeSlideWeightedProposal::prepareProposal( void )
  */
 void NodeTimeSlideWeightedProposal::printParameterSummary(std::ostream &o, bool name_only) const
 {
-    
+
 }
 
 
@@ -246,10 +252,10 @@ void NodeTimeSlideWeightedProposal::printParameterSummary(std::ostream &o, bool 
  */
 void NodeTimeSlideWeightedProposal::undoProposal( void )
 {
-    
+    if (storedNode == nullptr) return;
+
     // undo the proposal
     variable->getValue().getNode(storedNode->getIndex()).setAge( storedAge );
-    
 }
 
 
@@ -261,9 +267,9 @@ void NodeTimeSlideWeightedProposal::undoProposal( void )
  */
 void NodeTimeSlideWeightedProposal::swapNodeInternal(DagNode *oldN, DagNode *newN)
 {
-    
+
     variable = static_cast<StochasticNode<Tree>* >(newN) ;
-    
+
 }
 
 
@@ -282,6 +288,5 @@ void NodeTimeSlideWeightedProposal::setProposalTuningParameter(double tp)
  */
 void NodeTimeSlideWeightedProposal::tune( double rate )
 {
-    
-}
 
+}

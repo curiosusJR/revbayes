@@ -27,7 +27,7 @@ NodeTimeScaleProposal::NodeTimeScaleProposal( StochasticNode<Tree> *n, double l 
 {
     // tell the base class to add the node
     addNode( variable );
-    
+
 }
 
 
@@ -49,7 +49,7 @@ void NodeTimeScaleProposal::cleanProposal( void )
  */
 NodeTimeScaleProposal* NodeTimeScaleProposal::clone( void ) const
 {
-    
+
     return new NodeTimeScaleProposal( *this );
 }
 
@@ -62,7 +62,7 @@ NodeTimeScaleProposal* NodeTimeScaleProposal::clone( void ) const
 const std::string& NodeTimeScaleProposal::getProposalName( void ) const
 {
     static std::string name = "NodeTimeScale";
-    
+
     return name;
 }
 
@@ -88,22 +88,27 @@ double NodeTimeScaleProposal::getProposalTuningParameter( void ) const
  */
 double NodeTimeScaleProposal::doProposal( void )
 {
-    
+
     // Get random number generator
     RandomNumberGenerator* rng     = GLOBAL_RNG;
-    
+
     Tree& tau = variable->getValue();
-    
-    // pick a random node which is not the root, a tip, or the parent of a SA
-    TopologyNode* node;
-    do {
-        double u = rng->uniform01();
-        size_t index = size_t( std::floor(tau.getNumberOfNodes() * u) );
-        node = &tau.getNode(index);
-    } while ( node->isRoot() || node->isTip() || node -> isSampledAncestorParent() );
-    
+
+    // pick a random node which is not the root, a tip, or the parent of a sampled ancestor
+    TopologyNode* node = tau.pickRandomInternalNode(rng);
+    if (node == NULL)
+    {
+        if (logMCMC >=1 or debugMCMC >=1)
+        {
+            std::cerr << "mvNodeTimeScale has no effect; the tree only contains the root, tips, and sampled ancestors." << std::endl;
+        }
+
+        storedNode = nullptr;
+        return RbConstants::Double::neginf;
+    }
+
     TopologyNode& parent = node->getParent();
-    
+
     // we need to work with the times
     double parent_age  = parent.getAge();
     double my_age      = node->getAge();
@@ -112,16 +117,16 @@ double NodeTimeScaleProposal::doProposal( void )
     {
         child_Age = node->getChild( 1 ).getAge();
     }
-    
+
     // now we store all necessary values
     storedNode = node;
     storedAge = my_age;
-    
+
     // draw new ages
     double u = rng->uniform01();
     double scaling_factor = std::exp( lambda * ( u - 0.5 ) );
     double my_new_age = (my_age-child_Age) * scaling_factor + child_Age;
-    
+
     // if new age is out of bounds
     if (my_new_age > parent_age)
     {
@@ -131,13 +136,13 @@ double NodeTimeScaleProposal::doProposal( void )
     {
         return RbConstants::Double::neginf;
     }
-    
+
     // set the age
     tau.getNode( node->getIndex() ).setAge( my_new_age );
-    
+
     // compute the Hastings ratio
     double lnHastingsratio = log( scaling_factor );
-    
+
     return lnHastingsratio;
 }
 
@@ -147,7 +152,7 @@ double NodeTimeScaleProposal::doProposal( void )
  */
 void NodeTimeScaleProposal::prepareProposal( void )
 {
-    
+
 }
 
 
@@ -161,7 +166,7 @@ void NodeTimeScaleProposal::prepareProposal( void )
  */
 void NodeTimeScaleProposal::printParameterSummary(std::ostream &o, bool name_only) const
 {
-    
+
 }
 
 
@@ -174,10 +179,10 @@ void NodeTimeScaleProposal::printParameterSummary(std::ostream &o, bool name_onl
  */
 void NodeTimeScaleProposal::undoProposal( void )
 {
-    
+    if (storedNode == nullptr) return;
+
     // undo the proposal
     variable->getValue().getNode( storedNode->getIndex() ).setAge( storedAge );
-    
 }
 
 
@@ -189,9 +194,9 @@ void NodeTimeScaleProposal::undoProposal( void )
  */
 void NodeTimeScaleProposal::swapNodeInternal(DagNode *oldN, DagNode *newN)
 {
-    
+
     variable = static_cast<StochasticNode<Tree>* >(newN) ;
-    
+
 }
 
 
@@ -210,5 +215,5 @@ void NodeTimeScaleProposal::setProposalTuningParameter(double tp)
  */
 void NodeTimeScaleProposal::tune( double rate )
 {
-    
+
 }
